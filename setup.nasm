@@ -15,13 +15,13 @@ STRUC Configuration
 .gadget: RESD 1
 .shadow: RESD 2
 .stack: RESB 0x10000
-.cast: RESD 9
+.trampoline: RESD 9
 ENDSTRUC
 
 ; Call me like void (*__cdecl callable)(void* workspace);
 
 	mov ebx, [esp+4] ; Configuration in ebx now
-	lea esp, [ebx + Configuration.cast - 4] ; Bottom of "stack"
+	lea esp, [ebx + Configuration.trampoline - 4] ; Bottom of "stack"
 	mov ebp, esp
 	mov edx, [ebx + Configuration.initialized]
 
@@ -58,7 +58,7 @@ ENDSTRUC
 	; Replace the return address on our trampoline
 reset_trampoline:
 	mov ecx, [ebx + Configuration.VirtualProtectEx]
-	mov [ebx + Configuration.cast], ecx
+	mov [ebx + Configuration.trampoline], ecx
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;; Arbitrary code goes here. Note that the
