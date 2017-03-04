@@ -35,8 +35,7 @@ ENDSTRUC
 	push 0
 	mov ecx, [ebx + Configuration.CreateWaitableTimer]
 	call ecx
-	lea ecx, [ebx + Configuration.sleep_handle]
-	mov [ecx], eax
+	mov [ebx + Configuration.sleep_handle], eax
 
 	; Set the timer
 	push 0
