@@ -23,9 +23,9 @@ ENDSTRUC
 	mov ebx, [esp+4] ; Configuration in ebx now
 	lea esp, [ebx + Configuration.trampoline - 4] ; Bottom of "stack"
 	mov ebp, esp
-	mov edx, [ebx + Configuration.initialized]
 
 	; If we're initialized, skip to trampoline fixup
+	mov edx, [ebx + Configuration.initialized]
 	cmp edx, 0
 	jne reset_trampoline
 
