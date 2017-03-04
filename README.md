@@ -1,10 +1,8 @@
-# gargoyle
 ![gargoyle title](https://github.com/JLospinoso/gargoyle/raw/master/title.png)
 
-# How it works
 ![gargoyle infographic](https://github.com/JLospinoso/gargoyle/raw/master/infographic.png)
 
-# Build from source
+# Building gargoyle
 
 *gargoyle* is only implemented for 32-bit Windows (64-bit Windows on Windows is fine). You must have the following installed:
 
