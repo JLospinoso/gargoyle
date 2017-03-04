@@ -53,8 +53,7 @@ ENDSTRUC
 	call ecx
 
 	; Set the initialized bit
-	lea edx,[ebx + Configuration.initialized]
-	mov [edx], dword 1
+	mov [ebx + Configuration.initialized], dword 1
 	
 	; Replace the return address on our trampoline
 reset_trampoline:
@@ -62,16 +61,21 @@ reset_trampoline:
 	mov [ebx + Configuration.cast], ecx
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;;; Arbitrary code goes here. Note that stack
-	;;;; is pretty small...
+	;;;; Arbitrary code goes here. Note that the
+	;;;; default stack is pretty small (65k).
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Just popping a MB as example
-	push 0
-	push 0
-	push 0
+	; Pop a MessageBox as example
+	push 0          ; null
+	push 0x656c796f ; oyle
+	push 0x67726167 ; garg
+	mov ecx, esp
+	push 0x40       ; Info box
+	push ecx        ; ptr to 'gargoyle' on stack
+	push ecx        ; ptr to 'gargoyle' on stack
 	push 0
 	mov ecx, [ebx + Configuration.MessageBox]
 	call ecx
+	mov esp, ebp
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

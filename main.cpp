@@ -118,7 +118,7 @@ void launch(const string& setup_pic_path, const string& gadget_pic_path) {
   config.WaitForSingleObjectEx = WaitForSingleObjectEx;
   config.CreateWaitableTimer = CreateWaitableTimerW;
   config.SetWaitableTimer = SetWaitableTimer;
-  config.MessageBox = MessageBox;
+  config.MessageBox = MessageBoxA;
   config.tramp_addr = &tramp;
   config.interval = invocation_interval_ms;
   config.target = gadget_memory;
