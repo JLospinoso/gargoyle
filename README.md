@@ -27,7 +27,7 @@ auto use_mshtml{ true };
 auto gadget_memory = get_gadget(use_mshtml, gadget_pic_path);
 ```
 
-Every 5 seconds, gargoyle will pop up an empty message box then unmark itself executable. For fun, use [Sysinternals's excellent VMMap tool](https://technet.microsoft.com/en-us/sysinternals/vmmap.aspx) to examine when *gargoyle*'s PIC is executable. If a message box is active, *gargoyle* will be executable. If it is not, *gargoyle* should not be executable. The PIC's address is printed to `stdout` just before the harness calls into the PIC.
+Every 15 seconds, gargoyle will pop up a message box. When you click ok, gargoyle sets up the tail calls to mark itself non-executable and to wait for the timer. For fun, use [Sysinternals's excellent VMMap tool](https://technet.microsoft.com/en-us/sysinternals/vmmap.aspx) to examine when *gargoyle*'s PIC is executable. If a message box is active, *gargoyle* will be executable. If it is not, *gargoyle* should not be executable. The PIC's address is printed to `stdout` just before the harness calls into the PIC.
 
 # More information
 Blog post coming soon at [lospi.net](https://jlospinoso.github.io/).

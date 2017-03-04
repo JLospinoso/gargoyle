@@ -8,7 +8,7 @@ using namespace std;
 
 namespace {
   typedef void(*callable)(void*);
-  constexpr DWORD invocation_interval_ms = 5 * 1000;
+  constexpr DWORD invocation_interval_ms = 15 * 1000;
   constexpr size_t stack_size = 0x10000;
 
   struct SetupConfiguration {
