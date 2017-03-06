@@ -6,10 +6,9 @@
 
 using namespace std;
 
-typedef tuple<void*, size_t> MyTuple;
-
 namespace {
   typedef void(*callable)(void*);
+  typedef tuple<void*, size_t> MyTuple;
   constexpr DWORD invocation_interval_ms = 15 * 1000;
   constexpr size_t stack_size = 0x10000;
 
