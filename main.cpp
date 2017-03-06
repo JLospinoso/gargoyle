@@ -6,6 +6,8 @@
 
 using namespace std;
 
+typedef tuple<void*, size_t> MyTuple;
+
 namespace {
   typedef void(*callable)(void*);
   constexpr DWORD invocation_interval_ms = 15 * 1000;
@@ -53,7 +55,8 @@ Workspace& allocate_workspace() {
   return *static_cast<Workspace*>(result);
 }
 
-tuple<void*, size_t> allocate_pic(const string& filename) {
+MyTuple allocate_pic(const string& filename) {
+  
   fstream file_stream{ filename, fstream::in | fstream::ate | fstream::binary };
   if (!file_stream) throw runtime_error("[-] Couldn't open " + filename);
   auto pic_size = static_cast<size_t>(file_stream.tellg());
@@ -65,7 +68,9 @@ tuple<void*, size_t> allocate_pic(const string& filename) {
   DWORD old_protection;
   auto prot_result = VirtualProtectEx(GetCurrentProcess(), pic, pic_size, PAGE_EXECUTE_READ, &old_protection);
   if (!prot_result) throw runtime_error("[-] Couldn't VirtualProtectEx: " + GetLastError());
-  return { pic, pic_size };
+  MyTuple t1((void*) pic, (size_t) pic_size );
+  return t1;
+
 }
 
 void* get_gadget(bool use_mshtml, const string& gadget_pic_path) {
