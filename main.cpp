@@ -67,9 +67,7 @@ MyTuple allocate_pic(const string& filename) {
   DWORD old_protection;
   auto prot_result = VirtualProtectEx(GetCurrentProcess(), pic, pic_size, PAGE_EXECUTE_READ, &old_protection);
   if (!prot_result) throw runtime_error("[-] Couldn't VirtualProtectEx: " + GetLastError());
-  MyTuple t1((void*) pic, (size_t) pic_size );
-  return t1;
-
+  return MyTuple((void*) pic, (size_t) pic_size);
 }
 
 void* get_gadget(bool use_mshtml, const string& gadget_pic_path) {
