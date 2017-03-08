@@ -31,3 +31,6 @@ Every 15 seconds, gargoyle will pop up a message box. When you click ok, gargoyl
 
 # More information
 See the blog post [available at lospi.net](https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html) for more information.
+
+Also feel free to hop on gitter: [![Join the chat at https://gitter.im/grgyl/Lobby](https://badges.gitter.im/grgyl/Lobby.svg)](https://gitter.im/grgyl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
