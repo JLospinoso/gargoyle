@@ -6,7 +6,7 @@
 
 *gargoyle* is only implemented for 32-bit Windows (64-bit Windows on Windows is fine). You must have the following installed:
 
-* [Visual Studio](https://www.visualstudio.com/downloads/): 2015 Community is tested, but it may work for other versions.
+* [Visual Studio](https://www.visualstudio.com/downloads/): 2017 Community is tested, but it may work for other versions.
 * [Netwide Assembler](http://www.nasm.us/pub/nasm/releasebuilds/?C=M;O=D) v2.12.02 x64 is tested, but it may work for other versions. Make sure `nasm.exe` is on your path.
 
 Clone *gargoyle*:
