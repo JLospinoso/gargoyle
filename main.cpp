@@ -12,6 +12,16 @@ namespace {
   constexpr DWORD invocation_interval_ms = 15 * 1000;
   constexpr size_t stack_size = 0x10000;
 
+  struct VersionToOffset {
+    WORD file_version[4];
+    uint32_t relative_offset;
+  };
+
+  VersionToOffset mshtml_gadget_offset_map[] = {
+    {    11,     0, 14393,   953, 0x003CBD4D },
+    {     0,     0,     0,     0, 0x006D55DD }  // Provides the default ROP gadget offset (for Windows v8.1?)
+  };
+
   struct SetupConfiguration {
     uint32_t initialized;
     void* setup_address;
@@ -70,19 +80,84 @@ MyTuple allocate_pic(const string& filename) {
   return MyTuple(pic, pic_size);
 }
 
+uint32_t get_mshtml_gadget_relative_offset(const char *mshtml_filename) {
+  DWORD version_handle;
+  auto version_info_size = GetFileVersionInfoSizeA(mshtml_filename, &version_handle);
+  if (version_info_size == 0) throw runtime_error("[-] Couldn't GetFileVersionInfoSize: " + GetLastError());
+
+  LPSTR version_data = new char[version_info_size];
+  auto result = GetFileVersionInfoA(mshtml_filename, version_handle, version_info_size, version_data);
+  if (!result) {
+      delete[] version_data;
+      throw runtime_error("[-] Couldn't GetFileVersionInfo: " + GetLastError());
+  }
+
+  LPBYTE version_info_buffer;
+  UINT version_info_buffer_size;
+  result = VerQueryValueA(version_data, "\\", (VOID FAR* FAR*)&version_info_buffer, &version_info_buffer_size);
+  if (!result) {
+      delete[] version_data;
+      throw runtime_error("[-] Couldn't VerQueryValue: " + GetLastError());
+  }
+
+  VS_FIXEDFILEINFO *version_info = (VS_FIXEDFILEINFO *)version_info_buffer;
+  WORD unpacked_file_version_words[4] = {
+    (version_info->dwFileVersionMS >> 16) & 0xffff,
+    (version_info->dwFileVersionMS >> 0) & 0xffff,
+    (version_info->dwFileVersionLS >> 16) & 0xffff,
+    (version_info->dwFileVersionLS >> 0) & 0xffff };
+  DWORDLONG unpacked_file_version = *(DWORDLONG *)unpacked_file_version_words;
+  delete[] version_data;
+
+  printf("[ ] Found %s version %d.%d.%d.%d.\n",
+    mshtml_filename,
+    unpacked_file_version_words[0],
+    unpacked_file_version_words[1],
+    unpacked_file_version_words[2],
+    unpacked_file_version_words[3]);
+
+  uint32_t relative_offset = 0;
+  auto using_default = false;
+  int entry_num = 0;
+  while (relative_offset == 0) {
+    VersionToOffset *version_entry = &mshtml_gadget_offset_map[entry_num];
+    if (*(DWORDLONG *)version_entry->file_version == unpacked_file_version
+      || *(DWORDLONG *)version_entry->file_version == 0)
+      relative_offset = version_entry->relative_offset;
+      using_default = *(DWORDLONG *)version_entry->file_version == 0;
+    ++entry_num;
+  }
+
+  if (using_default) {
+      printf("[*] WARNING: Unrecognized version, so using default relative offset.\n");
+  }
+  printf("[ ] %s ROP gadget is at relative offset 0x%p.\n", mshtml_filename, (void *)relative_offset);
+
+  return relative_offset;
+}
+
+void* get_mshtml_gadget() {
+  LPCSTR mshtml_filename = "mshtml.dll";
+  printf("[ ] Loading %s.\n", mshtml_filename);
+  auto mshtml_gadget_offset = get_mshtml_gadget_relative_offset(mshtml_filename);
+  auto mshtml_base = reinterpret_cast<uint8_t*>(LoadLibraryA(mshtml_filename));
+  if (mshtml_base == 0) throw runtime_error("[-] Couldn't LoadLibrary: " + GetLastError());
+
+  printf("[+] Loaded %s into memory at 0x%p.\n", mshtml_filename, mshtml_base);
+  return mshtml_base + mshtml_gadget_offset;
+}
+
 void* get_gadget(bool use_mshtml, const string& gadget_pic_path) {
+  void* memory;
   if (use_mshtml) {
-    printf("[ ] Loading mshtml.dll.\n");
-    auto mshtml_base = reinterpret_cast<uint8_t*>(LoadLibraryA("mshtml.dll"));
-    printf("[+] Loaded mshtml.dll into memory at 0x%p.\n", mshtml_base);
-    return mshtml_base + 7165405;
+    memory = get_mshtml_gadget();
   } else {
     printf("[ ] Allocating memory for %s.\n", gadget_pic_path.c_str());
-    void* memory; size_t size;
+    size_t size;
     tie(memory, size) = allocate_pic(gadget_pic_path);
     printf("[ ] Allocated %u bytes for gadget PIC.\n", size);
-    return memory;
   }
+  return memory;
 }
 
 void launch(const string& setup_pic_path, const string& gadget_pic_path) {
