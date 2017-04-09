@@ -18,9 +18,19 @@ namespace {
     uint32_t relative_offset;
   };
 
+  /*
+   * See https://changewindows.org/ for a detailed Windows 10 release history,
+   * including updates to milestone releases.  A new build of the "mshtml.dll"
+   * file has not been included with every update.
+   */
+
   vector<VersionToOffset> mshtml_gadget_offset_map = {
+    // Windows 10 Creators Update (Build v10.0.15063.0 as of Mar 20, 2017)
+    {    11,     0, 15063,     0, 0x00585098 },
+    // Windows 10 Anniversary Update (Build v10.0.14393.953 as of Mar 14, 2017)
     {    11,     0, 14393,   953, 0x003CBD4D },
-    {     0,     0,     0,     0, 0x006D55DD }  // Provides the default ROP gadget offset (for Windows v8.1?)
+    // The default ROP gadget offset (for Windows v8.1?)
+    {     0,     0,     0,     0, 0x006D55DD }
   };
 
   struct SetupConfiguration {
