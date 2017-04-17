@@ -25,6 +25,8 @@ namespace {
    */
 
   vector<VersionToOffset> mshtml_gadget_offset_map = {
+    // Windows 10 Creators Update (Build v10.0.15063.138 as of Apr 11, 2017)
+    {    11,     0, 15063,   138, 0x00585068 },
     // Windows 10 Creators Update (Build v10.0.15063.0 as of Mar 20, 2017)
     {    11,     0, 15063,     0, 0x00585098 },
     // Windows 10 Anniversary Update (Build v10.0.14393.953 as of Mar 14, 2017)
