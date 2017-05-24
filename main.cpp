@@ -1,9 +1,11 @@
-#include <vector>
-#include <tuple>
+#include <algorithm>
 #include <fstream>
-#include "Windows.h"
-#include <psapi.h>
+#include <tuple>
 #include <vector>
+
+#include <Windows.h>
+#include <DbgHelp.h>
+#include <winnt.h>
 
 using namespace std;
 
@@ -13,26 +15,9 @@ namespace {
   constexpr DWORD invocation_interval_ms = 15 * 1000;
   constexpr size_t stack_size = 0x10000;
 
-  struct VersionToOffset {
-    WORD file_version[4];
-    uint32_t relative_offset;
-  };
-
-  /*
-   * See https://changewindows.org/ for a detailed Windows 10 release history,
-   * including updates to milestone releases.  A new build of the "mshtml.dll"
-   * file has not been included with every update.
-   */
-
-  vector<VersionToOffset> mshtml_gadget_offset_map = {
-    // Windows 10 Creators Update (Build v10.0.15063.138 as of Apr 11, 2017)
-    {    11,     0, 15063,   138, 0x00585068 },
-    // Windows 10 Creators Update (Build v10.0.15063.0 as of Mar 20, 2017)
-    {    11,     0, 15063,     0, 0x00585098 },
-    // Windows 10 Anniversary Update (Build v10.0.14393.953 as of Mar 14, 2017)
-    {    11,     0, 14393,   953, 0x003CBD4D },
-    // The default ROP gadget offset (for Windows v8.1?)
-    {     0,     0,     0,     0, 0x006D55DD }
+  vector<vector<uint8_t>> rop_gadget_candidates = {
+    { 0x59, 0x5C, 0xC3 },                   // pop ecx; pop esp; ret
+    { 0x58, 0x5C, 0xC3 }                    // pop eax; pop esp; ret
   };
 
   struct SetupConfiguration {
@@ -78,9 +63,8 @@ Workspace& allocate_workspace() {
 }
 
 MyTuple allocate_pic(const string& filename) {
-  
   fstream file_stream{ filename, fstream::in | fstream::ate | fstream::binary };
-  if (!file_stream) throw runtime_error("[-] Couldn't open " + filename);
+  if (!file_stream) throw runtime_error("[-] Couldn't open \"" + filename + "\".");
   auto pic_size = static_cast<size_t>(file_stream.tellg());
   file_stream.seekg(0, fstream::beg);
   auto pic = VirtualAllocEx(GetCurrentProcess(), nullptr, pic_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
@@ -93,92 +77,70 @@ MyTuple allocate_pic(const string& filename) {
   return MyTuple(pic, pic_size);
 }
 
-uint32_t get_mshtml_gadget_relative_offset(const char *mshtml_filename) {
-  DWORD version_handle;
-  auto version_info_size = GetFileVersionInfoSizeA(mshtml_filename, &version_handle);
-  if (version_info_size == 0) throw runtime_error("[-] Couldn't GetFileVersionInfoSize: " + GetLastError());
+void* get_system_dll_gadget(const string& system_dll_filename) {
+  printf("[ ] Loading \"%s\" system DLL.\n", system_dll_filename.c_str());
+  auto dll_base = reinterpret_cast<uint8_t*>(LoadLibraryA(system_dll_filename.c_str()));
+  if (!dll_base) throw runtime_error("[-] Couldn't LoadLibrary: " + GetLastError());
 
-  vector<char> version_data(version_info_size);
-  auto result = GetFileVersionInfoA(mshtml_filename, version_handle, version_info_size, &version_data[0]);
-  if (!result) {
-      throw runtime_error("[-] Couldn't GetFileVersionInfo: " + GetLastError());
+  printf("[+] Loaded \"%s\" at 0x%p.\n", system_dll_filename.c_str(), dll_base);
+
+  auto pe_header = ImageNtHeader(dll_base);
+  if (!pe_header) throw runtime_error("[-] Couldn't ImageNtHeader: " + GetLastError());
+
+  auto filtered_section_headers = vector<PIMAGE_SECTION_HEADER>();
+  auto section_header = reinterpret_cast<PIMAGE_SECTION_HEADER>(pe_header + 1);
+  for (int i = 0; i < pe_header->FileHeader.NumberOfSections; ++i)
+  {
+    if (section_header->Characteristics & IMAGE_SCN_MEM_EXECUTE) {
+      filtered_section_headers.push_back(section_header);
+      printf("[ ] Found executable section \"%s\" at 0x%p.\n", section_header->Name, dll_base + section_header->VirtualAddress);
+    }
+    section_header++;
+  };
+
+  for (auto section_header : filtered_section_headers)
+  {
+    for (auto rop_gadget : rop_gadget_candidates)
+    {
+      auto section_base = dll_base + section_header->VirtualAddress;
+      vector<uint8_t> section_content(section_base, section_base + section_header->Misc.VirtualSize);
+      auto search_result = search(begin(section_content), end(section_content), begin(rop_gadget), end(rop_gadget));
+      if (search_result == end(section_content))
+          continue;
+
+      auto rop_gadget_offset = section_base + (search_result - begin(section_content));
+      printf("[+] Found ROP gadget in section \"%s\" at 0x%p.\n", section_header->Name, rop_gadget_offset);
+      return rop_gadget_offset;
+    }
   }
 
-  LPBYTE version_info_buffer;
-  UINT version_info_buffer_size;
-  result = VerQueryValueA(&version_data[0], "\\", reinterpret_cast<VOID FAR* FAR*>(&version_info_buffer), &version_info_buffer_size);
-  if (!result) {
-      throw runtime_error("[-] Couldn't VerQueryValue: " + GetLastError());
-  }
-
-  auto *version_info = reinterpret_cast<VS_FIXEDFILEINFO *>(version_info_buffer);
-  WORD unpacked_file_version_words[4] = {
-    (version_info->dwFileVersionMS >> 16) & 0xffff,
-    (version_info->dwFileVersionMS >> 0) & 0xffff,
-    (version_info->dwFileVersionLS >> 16) & 0xffff,
-    (version_info->dwFileVersionLS >> 0) & 0xffff };
-  auto unpacked_file_version = *reinterpret_cast<DWORDLONG *>(unpacked_file_version_words);
-
-  printf("[ ] Found %s version %d.%d.%d.%d.\n",
-    mshtml_filename,
-    unpacked_file_version_words[0],
-    unpacked_file_version_words[1],
-    unpacked_file_version_words[2],
-    unpacked_file_version_words[3]);
-
-  uint32_t relative_offset = 0;
-  auto using_default = false;
-  auto entry_num = 0;
-  while (relative_offset == 0) {
-    auto* version_entry = &mshtml_gadget_offset_map[entry_num];
-    if (*reinterpret_cast<DWORDLONG *>(version_entry->file_version) == unpacked_file_version
-      || *reinterpret_cast<DWORDLONG *>(version_entry->file_version) == 0)
-      relative_offset = version_entry->relative_offset;
-      using_default = *reinterpret_cast<DWORDLONG *>(version_entry->file_version) == 0;
-    ++entry_num;
-  }
-
-  if (using_default) {
-    printf("[*] WARNING: Unrecognized version, so using default relative offset.\n");
-  }
-  printf("[ ] %s ROP gadget is at relative offset 0x%p.\n", mshtml_filename, reinterpret_cast<void *>(relative_offset));
-
-  return relative_offset;
+  printf("[-] Didn't find ROP gadget in \"%s\".\n", system_dll_filename.c_str());
+  return 0;
 }
 
-void* get_mshtml_gadget() {
-  auto mshtml_filename = "mshtml.dll";
-  printf("[ ] Loading %s.\n", mshtml_filename);
-  auto mshtml_gadget_offset = get_mshtml_gadget_relative_offset(mshtml_filename);
-  auto mshtml_base = reinterpret_cast<uint8_t*>(LoadLibraryA(mshtml_filename));
-  if (!mshtml_base) throw runtime_error("[-] Couldn't LoadLibrary: " + GetLastError());
-
-  printf("[+] Loaded %s into memory at 0x%p.\n", mshtml_filename, mshtml_base);
-  return mshtml_base + mshtml_gadget_offset;
-}
-
-void* get_gadget(bool use_mshtml, const string& gadget_pic_path) {
+void* get_gadget(bool use_system_dll, const string& gadget_system_dll_filename, const string& gadget_pic_path) {
   void* memory;
-  if (use_mshtml) {
-    memory = get_mshtml_gadget();
-  } else {
-    printf("[ ] Allocating memory for %s.\n", gadget_pic_path.c_str());
+  if (use_system_dll) {
+    memory = get_system_dll_gadget(gadget_system_dll_filename);
+  }
+  if (!use_system_dll || !memory) {
+    printf("[ ] Allocating executable memory for \"%s\".\n", gadget_pic_path.c_str());
     size_t size;
     tie(memory, size) = allocate_pic(gadget_pic_path);
-    printf("[ ] Allocated %u bytes for gadget PIC.\n", size);
+    printf("[+] Allocated %u bytes for gadget PIC.\n", size);
   }
   return memory;
 }
 
-void launch(const string& setup_pic_path, const string& gadget_pic_path) {
-  printf("[ ] Allocating executable memory for %s.\n", setup_pic_path.c_str());
+void launch(const string& setup_pic_path, const string& gadget_system_dll_filename, const string& gadget_pic_path) {
+  printf("[ ] Allocating executable memory for \"%s\".\n", setup_pic_path.c_str());
   void* setup_memory; size_t setup_size;
   tie(setup_memory, setup_size) = allocate_pic(setup_pic_path);
   printf("[+] Allocated %d bytes for PIC.\n", setup_size);
 
-  auto use_mshtml{ true };
+  auto use_system_dll{ true };
   printf("[ ] Configuring ROP gadget.\n");
-  auto gadget_memory = get_gadget(use_mshtml, gadget_pic_path);
+  auto gadget_memory = get_gadget(use_system_dll, gadget_system_dll_filename, gadget_pic_path);
   printf("[+] ROP gadget configured.\n");
 
   printf("[ ] Allocating read/write memory for config, stack, and trampoline.\n");
@@ -225,7 +187,7 @@ void launch(const string& setup_pic_path, const string& gadget_pic_path) {
 
 int main() {
   try {
-    launch("setup.pic", "gadget.pic");
+    launch("setup.pic", "mshtml.dll", "gadget.pic");
   } catch (exception& e) {
     printf("%s\n", e.what());
   }
