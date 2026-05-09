@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows build and Python checks
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+
+      - name: Set up just
+        uses: extractions/setup-just@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install NASM
+        shell: pwsh
+        run: |
+          $nasm = Get-Command nasm.exe -ErrorAction SilentlyContinue
+          if (-not $nasm) {
+            winget install --id NASM.NASM --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+          }
+
+          $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'
+          if (Test-Path (Join-Path $nasmDir 'nasm.exe')) {
+            Add-Content -Path $env:GITHUB_PATH -Value $nasmDir
+          }
+
+      - name: Run CI
+        run: just ci

@@ -39,6 +39,19 @@ docs:
 docs-serve:
   uv run --all-groups mkdocs serve -a 127.0.0.1:8000
 
+build configuration:
+  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform=x86 /m
+
+build-debug:
+  just build Debug
+
+build-release:
+  just build Release
+
+build-all:
+  just build-debug
+  just build-release
+
 acceptance configuration="Debug":
   uv run --all-groups gargoyle-acceptance --configuration {{configuration}}
 
@@ -49,3 +62,9 @@ check:
   just typecheck
   just test
   just docs
+
+ci:
+  just sync
+  just lock-check
+  just build-all
+  just check
