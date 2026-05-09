@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdio>
 #include <fstream>
 #include <tuple>
 #include <vector>
@@ -20,6 +21,7 @@ namespace {
     { 0x58, 0x5C, 0xC3 }                    // pop eax; pop esp; ret
   };
 
+  /// Mirrors the NASM Configuration layout consumed by setup.nasm.
   struct SetupConfiguration {
     uint32_t initialized;
     void* setup_address;
@@ -36,6 +38,7 @@ namespace {
     uint8_t shadow[8];
   };
 
+  /// Holds the VirtualProtectEx call frame used when the ROP gadget pivots back.
   struct StackTrampoline {
     void* VirtualProtectEx;
     void* return_address;
@@ -48,6 +51,7 @@ namespace {
     void* setup_config;
   };
 
+  /// Owns all mutable memory needed by the PIC: configuration, scratch stack, and trampoline.
   struct Workspace {
     SetupConfiguration config;
     uint8_t stack[stack_size];
@@ -55,6 +59,7 @@ namespace {
   };
 }
 
+/// Allocates the mutable workspace shared with the PIC.
 Workspace& allocate_workspace() {
   auto result = VirtualAllocEx(GetCurrentProcess(), nullptr, sizeof(Workspace), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   if (!result) throw runtime_error("[-] Couldn't VirtualAllocEx: " + GetLastError());
@@ -62,6 +67,7 @@ Workspace& allocate_workspace() {
   return *static_cast<Workspace*>(result);
 }
 
+/// Loads a raw PIC blob and marks it executable.
 MyTuple allocate_pic(const string& filename) {
   fstream file_stream{ filename, fstream::in | fstream::ate | fstream::binary };
   if (!file_stream) throw runtime_error("[-] Couldn't open \"" + filename + "\".");
@@ -77,6 +83,7 @@ MyTuple allocate_pic(const string& filename) {
   return MyTuple(pic, pic_size);
 }
 
+/// Finds a compatible stack-pivot gadget in an executable section of a system DLL.
 void* get_system_dll_gadget(const string& system_dll_filename) {
   printf("[ ] Loading \"%s\" system DLL.\n", system_dll_filename.c_str());
   auto dll_base = reinterpret_cast<uint8_t*>(LoadLibraryA(system_dll_filename.c_str()));
@@ -118,6 +125,7 @@ void* get_system_dll_gadget(const string& system_dll_filename) {
   return 0;
 }
 
+/// Selects either a system-DLL gadget or the tiny fallback gadget PIC.
 void* get_gadget(bool use_system_dll, const string& gadget_system_dll_filename, const string& gadget_pic_path) {
   void* memory;
   if (use_system_dll) {
@@ -132,6 +140,7 @@ void* get_gadget(bool use_system_dll, const string& gadget_system_dll_filename, 
   return memory;
 }
 
+/// Wires together the PIC, gadget, trampoline, scratch stack, and demo payload.
 void launch(const string& setup_pic_path, const string& gadget_system_dll_filename, const string& gadget_pic_path) {
   printf("[ ] Allocating executable memory for \"%s\".\n", setup_pic_path.c_str());
   void* setup_memory; size_t setup_size;
@@ -186,6 +195,7 @@ void launch(const string& setup_pic_path, const string& gadget_system_dll_filena
 }
 
 int main() {
+  setvbuf(stdout, nullptr, _IONBF, 0);
   try {
     launch("setup.pic", "mshtml.dll", "gadget.pic");
   } catch (exception& e) {

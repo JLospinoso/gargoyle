@@ -259,3 +259,16 @@ paket-files/
 *.sln.iml
 B
 
+# Python tooling
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+site/
+dist/
+

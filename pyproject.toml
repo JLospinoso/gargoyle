@@ -1,0 +1,101 @@
+[project]
+name = "gargoyle-acceptance"
+version = "0.1.0"
+description = "Acceptance harness for the Gargoyle memory-scanner evasion proof of concept."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "AGPL-3.0-only"
+authors = [
+  { name = "Josh Lospinoso", email = "j@lospino.so" },
+]
+dependencies = [
+  "rich>=14.1.0",
+  "typer>=0.16.1",
+]
+
+[project.scripts]
+gargoyle-acceptance = "gargoyle_acceptance.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gargoyle_acceptance"]
+
+[dependency-groups]
+dev = [
+  "coverage>=7.11.0",
+  "mypy>=1.17.1",
+  "pydoclint>=0.8.1,<0.9.0",
+  "pytest>=8.4.1",
+  "pytest-cov>=7.0.0",
+  "pytest-xdist>=3.6.1",
+  "ruff>=0.12.10",
+]
+docs = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.18",
+  "mkdocstrings[python]>=0.30.0",
+  "pymdown-extensions>=10.16.1",
+]
+
+[tool.uv]
+package = true
+default-groups = ["dev", "docs"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+extend-exclude = ["site"]
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "N", "PL", "PTH", "RET", "RUF", "S", "SIM", "UP", "W"]
+ignore = ["PLR0913", "S603"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "S101", "SLF001"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src/gargoyle_acceptance"]
+strict = true
+pretty = true
+show_error_codes = true
+warn_unreachable = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --cov=src/gargoyle_acceptance --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=88"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["gargoyle_acceptance"]
+relative_files = true
+
+[tool.coverage.report]
+fail_under = 88
+show_missing = true
+skip_empty = true
+omit = [
+  "tests/*",
+  "src/gargoyle_acceptance/cli.py",
+  "src/gargoyle_acceptance/windows.py",
+]
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]
+
+[tool.pydoclint]
+style = "google"
+arg-type-hints-in-docstring = false
+check-class-attributes = false
+check-return-types = false
+skip-checking-raises = false
+require-return-section-when-returning = true
+require-yields-section-when-yielding = true
+allow-init-docstring = true

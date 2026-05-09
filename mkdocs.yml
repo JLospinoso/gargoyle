@@ -1,0 +1,37 @@
+site_name: Gargoyle
+site_description: Gargoyle memory-scanner evasion proof-of-concept documentation.
+repo_url: https://github.com/JLospinoso/gargoyle
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            docstring_style: google
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Acceptance Harness: acceptance.md
+  - Python API: api.md
