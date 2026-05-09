@@ -48,9 +48,23 @@ build-debug:
 build-release:
   just build Release
 
+build-x64 configuration:
+  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform=x64 /m
+
+build-x64-debug:
+  just build-x64 Debug
+
+build-x64-release:
+  just build-x64 Release
+
+build-x64-all:
+  just build-x64-debug
+  just build-x64-release
+
 build-all:
   just build-debug
   just build-release
+  just build-x64-all
 
 acceptance configuration="Debug":
   uv run --all-groups gargoyle-acceptance --configuration {{configuration}}

@@ -34,4 +34,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Acceptance Harness: acceptance.md
+  - Validation Checklist: validation-checklist.md
+  - Win32 Architecture: win32-architecture.md
+  - Responsible Use: responsible-use.md
+  - Future Work: future-work.md
+  - References: references.md
   - Python API: api.md
