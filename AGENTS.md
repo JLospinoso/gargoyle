@@ -76,6 +76,7 @@ just lock-check
 just build-debug
 just build-release
 just build-x64-all
+just native-check
 just check
 uv run --all-groups gargoyle-acceptance --configuration Debug
 uv run --all-groups gargoyle-acceptance --configuration Release
@@ -85,6 +86,8 @@ uv run --all-groups gargoyle-acceptance --configuration Release --platform x64
 
 - Run targeted checks while iterating, then run `just ci` before claiming completion when
   practical.
+- Run `just native-check` when changes affect C++ source, Visual Studio project settings,
+  NASM build integration, or native output layout.
 - Run the live `gargoyle-acceptance` checks when changes affect the C++/assembly runtime,
   Visual Studio project configuration, output artifacts, Windows message-box automation, or
   acceptance harness behavior.

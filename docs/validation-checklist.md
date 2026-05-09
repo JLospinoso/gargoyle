@@ -23,6 +23,7 @@ Run these before manual runtime validation:
 ```powershell
 uv sync --all-groups
 just build-all
+just native-check
 just check
 ```
 
@@ -41,6 +42,9 @@ Expected automated evidence:
   output directory.
 - `GargoyleX64.exe`, `setup_x64.pic`, and `reentry_x64.pic` exist in each x64
   output directory.
+- MSVC code analysis completes for Debug/Release on x86 and x64 with warnings as
+  errors.
+- AddressSanitizer Debug builds complete for x86 and x64 under `asan\`.
 - The setup banner includes non-zero addresses for the Gargoyle PIC, ROP gadget,
   configuration, stack bounds, and stack trampoline.
 - The x64 setup banner includes non-zero addresses for the setup PIC, re-entry

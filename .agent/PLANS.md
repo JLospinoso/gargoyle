@@ -17,6 +17,86 @@ without reading the full chat.
 
 ## Active Plans
 
+### Plan: Native Quality Hardening
+
+#### Objective
+
+Raise the C++/MSBuild quality gate with MSVC-native warnings, code analysis, and
+AddressSanitizer build coverage while keeping the proof-of-concept behavior intact.
+
+Definition of done:
+
+- Native projects build cleanly with stricter compiler diagnostics.
+- `just` exposes code-analysis and ASan build recipes for x86 and x64.
+- `just ci` includes the native quality gate.
+- Any C++ warning fixes are small, behavior-preserving elegance improvements.
+- PR #21 is updated, green, and still not merged.
+
+#### User Decisions And Assumptions
+
+User decisions:
+
+- 2026-05-09: User asked to crank up C++ sanitizers/linters and look for elegance
+  improvements.
+
+Assumptions:
+
+- Use MSVC-native quality tooling because `clang-tidy`, `clang-format`, and `cppcheck`
+  are not available on this workstation.
+- Avoid enabling Control Flow Guard or other mitigations that would interfere with raw PIC
+  indirect calls unless a separate plan covers the runtime consequences.
+
+#### Context And Evidence
+
+- Local probes found no `clang-tidy`, `clang-format`, or `cppcheck` on `PATH`.
+- `RunCodeAnalysis=true` works when run serially.
+- `EnableASAN=true` works for x86 and x64 builds; incremental linking should be disabled
+  for ASan to avoid linker warning LNK4300.
+
+#### Implementation Steps
+
+1. Tighten shared MSBuild C++ diagnostics in `build/Gargoyle.Cpp.props`.
+2. Add `just native-analyze-*`, `native-asan-*`, and `native-check` recipes.
+3. Fix surfaced C++ warnings with small readability/robustness edits.
+4. Update docs and durable plan state.
+5. Run native checks, live acceptance where needed, `just ci`, push, and monitor CI.
+
+#### Validation
+
+Targeted checks:
+
+- `just native-check`
+- `just build-all`
+- `just acceptance-all`
+
+Canonical gate:
+
+- `just ci`
+
+#### Risks And Stop Conditions
+
+- Stop if ASan instrumentation breaks the raw PIC demo in a way that requires changing
+  proof-of-concept mechanics.
+- Stop if code analysis reports issues that need design judgment rather than local cleanup.
+
+#### Progress Log
+
+- 2026-05-09: Plan recorded after local toolchain probes.
+- 2026-05-09: Added W4/WX, SDL, conformance mode, MSVC code-analysis recipes, and
+  AddressSanitizer build recipes.
+- 2026-05-09: Native quality gate passed with `just native-check`.
+- 2026-05-09: Full validation passed with `just ci` and `just acceptance-all`.
+
+#### Handoff Packet
+
+- Branch: `codex/issue-backlog`
+- PR/issue: PR #21
+- Current status: implementation complete locally
+- Remaining: commit, push, and monitor CI
+- Validation run: `just native-check`, `just ci`, `just acceptance-all`
+- Failed/skipped checks: one parallel `just ci` attempt failed with LNK1168 because live
+  acceptance held `Debug\Gargoyle.exe`; standalone rerun passed.
+
 ### Plan: MSBuild Reshape And x64 Timer-Reentry Parity
 
 #### Objective

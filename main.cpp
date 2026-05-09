@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdint>
 #include <exception>
@@ -20,10 +21,10 @@ namespace {
   constexpr DWORD invocation_interval_ms = 15 * 1000;
   constexpr size_t stack_size = 0x10000;
 
-  vector<vector<uint8_t>> rop_gadget_candidates = {
+  constexpr array<array<uint8_t, 3>, 2> rop_gadget_candidates{ {
     { 0x59, 0x5C, 0xC3 },                   // pop ecx; pop esp; ret
     { 0x58, 0x5C, 0xC3 }                    // pop eax; pop esp; ret
-  };
+  } };
 
   /// Mirrors the NASM Configuration layout consumed by setup.nasm.
   struct SetupConfiguration {
@@ -149,37 +150,36 @@ void* get_system_dll_gadget(const string& system_dll_filename) {
   auto pe_header = ImageNtHeader(dll_base);
   if (!pe_header) throw runtime_error("[-] ImageNtHeader returned null for \"" + system_dll_filename + "\".");
 
-  auto filtered_section_headers = vector<PIMAGE_SECTION_HEADER>();
-  auto section_header = reinterpret_cast<PIMAGE_SECTION_HEADER>(pe_header + 1);
+  auto executable_section_headers = vector<PIMAGE_SECTION_HEADER>();
+  auto current_section_header = reinterpret_cast<PIMAGE_SECTION_HEADER>(pe_header + 1);
   for (int i = 0; i < pe_header->FileHeader.NumberOfSections; ++i)
   {
-    if (section_header->Characteristics & IMAGE_SCN_MEM_EXECUTE) {
-      filtered_section_headers.push_back(section_header);
+    if (current_section_header->Characteristics & IMAGE_SCN_MEM_EXECUTE) {
+      executable_section_headers.push_back(current_section_header);
       printf("[ ] Found executable section \"%.*s\" at 0x%p (%lu bytes).\n",
         IMAGE_SIZEOF_SHORT_NAME,
-        reinterpret_cast<const char*>(section_header->Name),
-        static_cast<void*>(dll_base + section_header->VirtualAddress),
-        static_cast<unsigned long>(section_header->Misc.VirtualSize));
+        reinterpret_cast<const char*>(current_section_header->Name),
+        static_cast<void*>(dll_base + current_section_header->VirtualAddress),
+        static_cast<unsigned long>(current_section_header->Misc.VirtualSize));
     }
-    section_header++;
-  };
+    current_section_header++;
+  }
 
-  for (auto section_header : filtered_section_headers)
+  for (auto candidate_section_header : executable_section_headers)
   {
-    for (auto rop_gadget : rop_gadget_candidates)
+    for (const auto& rop_gadget : rop_gadget_candidates)
     {
-      auto section_base = dll_base + section_header->VirtualAddress;
-      vector<uint8_t> section_content(section_base, section_base + section_header->Misc.VirtualSize);
-      auto search_result = search(begin(section_content), end(section_content), begin(rop_gadget), end(rop_gadget));
-      if (search_result == end(section_content))
-          continue;
+      auto section_base = dll_base + candidate_section_header->VirtualAddress;
+      auto section_end = section_base + candidate_section_header->Misc.VirtualSize;
+      auto search_result = search(section_base, section_end, begin(rop_gadget), end(rop_gadget));
+      if (search_result == section_end)
+        continue;
 
-      auto rop_gadget_offset = section_base + (search_result - begin(section_content));
       printf("[+] Found ROP gadget in section \"%.*s\" at 0x%p.\n",
         IMAGE_SIZEOF_SHORT_NAME,
-        reinterpret_cast<const char*>(section_header->Name),
-        static_cast<void*>(rop_gadget_offset));
-      return rop_gadget_offset;
+        reinterpret_cast<const char*>(candidate_section_header->Name),
+        static_cast<void*>(search_result));
+      return search_result;
     }
   }
 

@@ -63,6 +63,16 @@ executable from the output directory, validates the setup banner, and closes two
 benign MessageBox windows to confirm initial PIC execution and timer re-entry.
 Use `uv run gargoyle-acceptance --help` for options.
 
+The native quality gate is MSVC-based:
+
+```powershell
+just native-check
+```
+
+That recipe runs MSVC code analysis for Debug/Release on x86 and x64, then builds
+Debug AddressSanitizer variants for both platforms under the ignored `asan\`
+directory. The normal `just ci` gate includes this native quality pass.
+
 The x64 example builds through the root solution:
 
 ```powershell
