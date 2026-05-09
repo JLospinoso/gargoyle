@@ -14,6 +14,7 @@ from gargoyle_acceptance.build import BuildResult, build_solution
 from gargoyle_acceptance.environment import (
     Configuration,
     GargoyleArtifacts,
+    Platform,
     artifacts_for,
     require_windows,
     resolve_repo_root,
@@ -38,6 +39,25 @@ ADDRESS_LABELS = (
     "Bottom of stack",
     "Stack trampoline",
 )
+X64_EXPECTED_MARKERS = (
+    "[+] x64 timer/APC prototype configured.",
+    "[ ] Entering benign x64 PIC payload loop.",
+)
+X64_ADDRESS_LABELS = (
+    "Gargoyle x64 PIC",
+    "x64 re-entry PIC",
+    "x64 APC callback",
+    "Configuration",
+    "VirtualProtectEx",
+    "WaitForSingleObjectEx",
+    "CreateWaitableTimerW",
+    "SetWaitableTimer",
+    "MessageBoxA",
+)
+MESSAGE_BOX_TITLES: dict[Platform, str] = {
+    "x86": "gargoyle",
+    "x64": "gargoyle x64",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +128,7 @@ class LineReader:
 def run_acceptance(
     *,
     configuration: Configuration,
+    platform: Platform = "x86",
     repo_root: Path | None = None,
     msbuild: Path | None = None,
     skip_build: bool = False,
@@ -118,6 +139,7 @@ def run_acceptance(
 
     Args:
         configuration: Visual Studio configuration to build and run.
+        platform: Visual Studio solution platform to build and run.
         repo_root: Optional repository root. Defaults to upward discovery.
         msbuild: Optional explicit MSBuild path.
         skip_build: Whether to skip the MSBuild step.
@@ -140,18 +162,19 @@ def run_acceptance(
 
     root = resolve_repo_root(repo_root)
     toolchain = resolve_toolchain(msbuild)
-    build = None if skip_build else build_solution(root, configuration, toolchain)
-    artifacts = artifacts_for(root, configuration)
+    build = None if skip_build else build_solution(root, configuration, platform, toolchain)
+    artifacts = artifacts_for(root, configuration, platform)
     verify_artifacts(artifacts)
 
     process = _start_gargoyle(artifacts)
     controller = MessageBoxController()
     try:
-        setup = _wait_for_setup(process, timeout_seconds=timeout_seconds)
+        setup = _wait_for_setup(process, platform=platform, timeout_seconds=timeout_seconds)
         closed_rounds = _close_message_boxes(
             process=process,
             controller=controller,
             rounds=rounds,
+            title=MESSAGE_BOX_TITLES[platform],
             timeout_seconds=timeout_seconds,
         )
     finally:
@@ -164,11 +187,15 @@ def run_acceptance(
     )
 
 
-def parse_setup_output(lines: list[str] | tuple[str, ...]) -> SetupObservation:
+def parse_setup_output(
+    lines: list[str] | tuple[str, ...],
+    platform: Platform = "x86",
+) -> SetupObservation:
     """Parse and validate Gargoyle's setup banner.
 
     Args:
         lines: Captured process output.
+        platform: Platform-specific banner format.
 
     Returns:
         Parsed setup evidence.
@@ -176,9 +203,11 @@ def parse_setup_output(lines: list[str] | tuple[str, ...]) -> SetupObservation:
     Raises:
         AcceptanceError: If required markers or addresses are missing.
     """
-    missing_markers = [marker for marker in EXPECTED_MARKERS if marker not in lines]
-    addresses = _parse_addresses(lines)
-    missing_addresses = [label for label in ADDRESS_LABELS if label not in addresses]
+    expected_markers = X64_EXPECTED_MARKERS if platform == "x64" else EXPECTED_MARKERS
+    address_labels = X64_ADDRESS_LABELS if platform == "x64" else ADDRESS_LABELS
+    missing_markers = [marker for marker in expected_markers if marker not in lines]
+    addresses = _parse_addresses(lines, address_labels)
+    missing_addresses = [label for label in address_labels if label not in addresses]
     if missing_markers or missing_addresses:
         problems = []
         if missing_markers:
@@ -200,17 +229,18 @@ def parse_setup_output(lines: list[str] | tuple[str, ...]) -> SetupObservation:
     return SetupObservation(lines=tuple(lines), addresses=addresses)
 
 
-def setup_banner_complete(lines: list[str]) -> bool:
+def setup_banner_complete(lines: list[str], platform: Platform = "x86") -> bool:
     """Return whether captured lines contain a complete setup banner.
 
     Args:
         lines: Captured process output.
+        platform: Platform-specific banner format.
 
     Returns:
         `True` when the setup banner can be parsed successfully.
     """
     try:
-        parse_setup_output(lines)
+        parse_setup_output(lines, platform)
     except AcceptanceError:
         return False
     return True
@@ -250,12 +280,14 @@ def _start_gargoyle(artifacts: GargoyleArtifacts) -> subprocess.Popen[str]:
 def _wait_for_setup(
     process: subprocess.Popen[str],
     *,
+    platform: Platform,
     timeout_seconds: float,
 ) -> SetupObservation:
     """Wait for Gargoyle to print a complete setup banner.
 
     Args:
         process: Running Gargoyle process.
+        platform: Platform-specific banner format.
         timeout_seconds: Maximum time to wait.
 
     Returns:
@@ -288,8 +320,8 @@ def _wait_for_setup(
         if line is None:
             continue
         lines.append(line)
-        if setup_banner_complete(lines):
-            return parse_setup_output(lines)
+        if setup_banner_complete(lines, platform):
+            return parse_setup_output(lines, platform)
     raise AcceptanceError(
         "Setup timed out",
         f"Gargoyle did not print a complete setup banner within {timeout_seconds:.0f} seconds.\n"
@@ -303,6 +335,7 @@ def _close_message_boxes(
     process: subprocess.Popen[str],
     controller: MessageBoxController,
     rounds: int,
+    title: str,
     timeout_seconds: float,
 ) -> int:
     """Close the benign MessageBox payload for a number of rounds.
@@ -311,6 +344,7 @@ def _close_message_boxes(
         process: Running Gargoyle process.
         controller: Window controller used to find and close windows.
         rounds: Number of payload windows to close.
+        title: MessageBox title to wait for.
         timeout_seconds: Maximum wait per round.
 
     Returns:
@@ -332,7 +366,7 @@ def _close_message_boxes(
             )
         hwnd = controller.wait_for_message_box(
             pid=process.pid,
-            title="gargoyle",
+            title=title,
             timeout_seconds=timeout_seconds,
         )
         controller.close_window(hwnd)
@@ -357,18 +391,22 @@ def _terminate_process(process: subprocess.Popen[str]) -> None:
         process.wait(timeout=5)
 
 
-def _parse_addresses(lines: list[str] | tuple[str, ...]) -> dict[str, int]:
+def _parse_addresses(
+    lines: list[str] | tuple[str, ...],
+    address_labels: tuple[str, ...],
+) -> dict[str, int]:
     """Parse address lines from Gargoyle's setup banner.
 
     Args:
         lines: Captured process output.
+        address_labels: Address labels expected for the platform.
 
     Returns:
         Address values keyed by banner label.
     """
     addresses: dict[str, int] = {}
     for line in lines:
-        for label in ADDRESS_LABELS:
+        for label in address_labels:
             prefix = f"{label} @"
             if line.strip().startswith(prefix) and "0x" in line:
                 raw_address = line.rsplit("0x", maxsplit=1)[-1].strip()

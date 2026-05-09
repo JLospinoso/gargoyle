@@ -27,13 +27,14 @@ behind. It should not evolve into a general offensive framework.
 
 ## Current Limitations
 
-- Architecture: the checked-in proof of concept is Win32/x86. It can run under
-  WOW64 on 64-bit Windows, but the assembly and stack-pivot details are not an
-  x64 implementation.
+- Architecture: the Win32/x86 path remains the reference implementation. The
+  checked-in x64 sibling demonstrates timer/APC re-entry with a separate
+  re-entry PIC, but it is not a transparent port of the Win32 stack-pivot chain.
 
 - Calling convention: `setup.nasm` relies on 32-bit stack calling conventions,
   `esp`/`ebp` manipulation, and a compact `pop reg; pop esp; ret`-style pivot.
-  Those assumptions do not carry directly to the Windows x64 calling convention.
+  The x64 sibling uses register arguments, shadow space, stack alignment, and a
+  separate re-entry surface instead of copying those assumptions.
 
 - Runtime environment: the acceptance harness needs a Windows desktop session
   because it closes visible `gargoyle` MessageBox windows. Headless CI can build
@@ -82,10 +83,10 @@ categories:
   movement into private allocations, and return paths that do not resemble
   ordinary compiler output.
 
-- Console and UI artifacts: the refreshed demo prints the PIC, gadget,
-  configuration, stack, and trampoline addresses, then opens benign MessageBox
-  windows titled `gargoyle`. Those are acceptance evidence, not stealth
-  features.
+- Console and UI artifacts: the refreshed demo prints platform-specific PIC,
+  configuration, callback, and API addresses, then opens benign MessageBox
+  windows titled `gargoyle` or `gargoyle x64`. Those are acceptance evidence,
+  not stealth features.
 
 - Forensics clues: Volatility-style plugins, page-table inspection, VAD review,
   and memory-map comparisons can all provide evidence even when an executable
@@ -115,4 +116,3 @@ This page contributes to:
 - #17 by documenting responsible use, limitations, and defender visibility.
 - #18 by naming the observations that the validation checklist should capture.
 - #19 by setting boundaries for future work.
-

@@ -121,7 +121,6 @@ Access dates below use 2026-05-08.
   reliable public source was verified during this docs pass. Keep it as a
   follow-up research item before adding it as a citation.
 
-- The x64 lineage deserves its own implementation-focused comparison after the
-  x64 issue is resolved. This page intentionally records public references
-  without prescribing a Gargoyle x64 design.
-
+- The x64 lineage deserves an implementation-focused comparison now that
+  Gargoyle has a sibling x64 timer/APC example. This page intentionally records
+  public references without prescribing a broader evasion design.

@@ -22,8 +22,7 @@ Run these before manual runtime validation:
 
 ```powershell
 uv sync --all-groups
-just build-debug
-just build-release
+just build-all
 just check
 ```
 
@@ -32,17 +31,25 @@ For the live acceptance path, run:
 ```powershell
 uv run --all-groups gargoyle-acceptance --configuration Debug
 uv run --all-groups gargoyle-acceptance --configuration Release
+uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64
+uv run --all-groups gargoyle-acceptance --configuration Release --platform x64
 ```
 
 Expected automated evidence:
 
 - `Gargoyle.exe`, `setup.pic`, and `gadget.pic` exist in each configuration
   output directory.
+- `GargoyleX64.exe`, `setup_x64.pic`, and `reentry_x64.pic` exist in each x64
+  output directory.
 - The setup banner includes non-zero addresses for the Gargoyle PIC, ROP gadget,
   configuration, stack bounds, and stack trampoline.
+- The x64 setup banner includes non-zero addresses for the setup PIC, re-entry
+  PIC, APC callback, configuration, and imported APIs.
 - The harness closes at least two benign `gargoyle` MessageBox rounds when run
   with its default settings, confirming the initial handoff and one timer/APC
   re-entry.
+- The x64 harness closes at least two benign `gargoyle x64` MessageBox rounds,
+  confirming the initial handoff and one timer/APC re-entry.
 
 ## Manual Runtime Checklist
 
@@ -67,6 +74,28 @@ Expected automated evidence:
 7. Dismiss the second MessageBox and close the process after collecting evidence.
    The demo should not create files, network connections, persistence, or
    non-benign payload effects.
+
+## x64 Manual Runtime Checklist
+
+1. Build `Debug|x64` or `Release|x64`.
+
+2. Start `GargoyleX64.exe` from the matching output directory so `setup_x64.pic`
+   and `reentry_x64.pic` are beside the executable.
+
+3. Save the console banner. Confirm the setup PIC, re-entry PIC, APC callback,
+   configuration, and imported API addresses are non-zero.
+
+4. When the first `gargoyle x64` MessageBox appears, inspect the setup PIC
+   address from the banner. It should be executable while the payload is active.
+
+5. Dismiss the MessageBox. During the idle interval, the setup PIC should be
+   parked as read-only while the separate re-entry PIC remains executable.
+
+6. Wait for the next `gargoyle x64` MessageBox. The default interval is
+   approximately 15 seconds. A second window confirms timer/APC re-entry.
+
+7. Dismiss the second MessageBox and close the process after collecting
+   evidence.
 
 ## Optional Diagnostic Observations
 
@@ -118,4 +147,3 @@ This page contributes to:
 - #13 by making the refreshed artifact easier to verify.
 - #18 by capturing reproducible automated and manual validation steps.
 - #17 by keeping live validation tied to benign, observable behavior.
-

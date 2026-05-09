@@ -14,27 +14,33 @@ from gargoyle_acceptance.errors import AcceptanceError
 
 Configuration = Literal["Debug", "Release"]
 VALID_CONFIGURATIONS: tuple[Configuration, ...] = ("Debug", "Release")
+Platform = Literal["x86", "x64"]
+VALID_PLATFORMS: tuple[Platform, ...] = ("x86", "x64")
 
 
 @dataclass(frozen=True, slots=True)
 class GargoyleArtifacts:
-    """Paths produced by a Gargoyle Win32 build.
+    """Paths produced by a Gargoyle native build.
 
     Attributes:
         repo_root: Repository root containing `Gargoyle.sln`.
         configuration: Visual Studio configuration name.
+        platform: Visual Studio solution platform.
         output_dir: Directory containing the executable and PIC blobs.
-        executable: Built `Gargoyle.exe`.
-        setup_pic: Built `setup.pic`.
-        gadget_pic: Built `gadget.pic`.
+        executable: Built executable.
+        setup_pic: Built setup PIC.
+        gadget_pic: Optional Win32 stack-pivot gadget PIC.
+        reentry_pic: Optional x64 wait/re-entry PIC.
     """
 
     repo_root: Path
     configuration: Configuration
+    platform: Platform
     output_dir: Path
     executable: Path
     setup_pic: Path
-    gadget_pic: Path
+    gadget_pic: Path | None = None
+    reentry_pic: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +76,29 @@ def parse_configuration(value: str) -> Configuration:
         "Unsupported configuration",
         f"Expected one of {', '.join(VALID_CONFIGURATIONS)}, got {value!r}.",
         "Use --configuration Debug or --configuration Release.",
+    )
+
+
+def parse_platform(value: str) -> Platform:
+    """Normalize a Visual Studio solution platform option.
+
+    Args:
+        value: User-provided platform name.
+
+    Returns:
+        A supported platform literal.
+
+    Raises:
+        AcceptanceError: If the platform is not supported.
+    """
+    normalized = value.strip()
+    for platform_name in VALID_PLATFORMS:
+        if normalized.lower() == platform_name.lower():
+            return platform_name
+    raise AcceptanceError(
+        "Unsupported platform",
+        f"Expected one of {', '.join(VALID_PLATFORMS)}, got {value!r}.",
+        "Use --platform x86 or --platform x64.",
     )
 
 
@@ -116,25 +145,26 @@ def resolve_repo_root(start: Path | None = None) -> Path:
     )
 
 
-def artifacts_for(repo_root: Path, configuration: Configuration) -> GargoyleArtifacts:
+def artifacts_for(
+    repo_root: Path,
+    configuration: Configuration,
+    platform_name: Platform = "x86",
+) -> GargoyleArtifacts:
     """Compute expected build outputs for a configuration.
 
     Args:
         repo_root: Repository root.
         configuration: Visual Studio configuration.
+        platform_name: Visual Studio solution platform.
 
     Returns:
         Expected artifact paths.
     """
-    output_dir = repo_root / configuration
-    return GargoyleArtifacts(
-        repo_root=repo_root,
-        configuration=configuration,
-        output_dir=output_dir,
-        executable=output_dir / "Gargoyle.exe",
-        setup_pic=output_dir / "setup.pic",
-        gadget_pic=output_dir / "gadget.pic",
-    )
+    candidates = _artifact_candidates(repo_root, configuration, platform_name)
+    for candidate in candidates:
+        if all(path.is_file() for path in _required_artifact_paths(candidate)):
+            return candidate
+    return candidates[0]
 
 
 def verify_artifacts(artifacts: GargoyleArtifacts) -> None:
@@ -146,18 +176,110 @@ def verify_artifacts(artifacts: GargoyleArtifacts) -> None:
     Raises:
         AcceptanceError: If any expected artifact is missing.
     """
-    missing = [
-        path
-        for path in (artifacts.executable, artifacts.setup_pic, artifacts.gadget_pic)
-        if not path.is_file()
-    ]
+    missing = [path for path in _required_artifact_paths(artifacts) if not path.is_file()]
     if missing:
         formatted = "\n".join(f"- {path}" for path in missing)
         raise AcceptanceError(
             "Build artifacts missing",
-            f"The {artifacts.configuration}|x86 output is incomplete:\n{formatted}",
+            (
+                f"The {artifacts.configuration}|{artifacts.platform} output is incomplete:\n"
+                f"{formatted}"
+            ),
             "Build the configuration first or run without --skip-build.",
         )
+
+
+def _artifact_candidates(
+    repo_root: Path,
+    configuration: Configuration,
+    platform_name: Platform,
+) -> tuple[GargoyleArtifacts, ...]:
+    """Return likely Visual Studio output locations.
+
+    Args:
+        repo_root: Repository root.
+        configuration: Visual Studio configuration.
+        platform_name: Visual Studio solution platform.
+
+    Returns:
+        Candidate artifact layouts in preference order.
+    """
+    if platform_name == "x86":
+        return (
+            _x86_artifacts(repo_root, configuration, repo_root / configuration),
+            _x86_artifacts(repo_root, configuration, repo_root / "Win32" / configuration),
+            _x86_artifacts(repo_root, configuration, repo_root / "x86" / configuration),
+        )
+    return (
+        _x64_artifacts(repo_root, configuration, repo_root / "x64" / configuration),
+        _x64_artifacts(repo_root, configuration, repo_root / "GargoyleX64" / "x64" / configuration),
+        _x64_artifacts(repo_root, configuration, repo_root / "GargoyleX64" / configuration),
+    )
+
+
+def _x86_artifacts(
+    repo_root: Path, configuration: Configuration, output_dir: Path
+) -> GargoyleArtifacts:
+    """Create a Win32 artifact layout.
+
+    Args:
+        repo_root: Repository root.
+        configuration: Visual Studio configuration.
+        output_dir: Candidate output directory.
+
+    Returns:
+        Win32 artifact paths.
+    """
+    return GargoyleArtifacts(
+        repo_root=repo_root,
+        configuration=configuration,
+        platform="x86",
+        output_dir=output_dir,
+        executable=output_dir / "Gargoyle.exe",
+        setup_pic=output_dir / "setup.pic",
+        gadget_pic=output_dir / "gadget.pic",
+    )
+
+
+def _x64_artifacts(
+    repo_root: Path, configuration: Configuration, output_dir: Path
+) -> GargoyleArtifacts:
+    """Create an x64 artifact layout.
+
+    Args:
+        repo_root: Repository root.
+        configuration: Visual Studio configuration.
+        output_dir: Candidate output directory.
+
+    Returns:
+        x64 artifact paths.
+    """
+    return GargoyleArtifacts(
+        repo_root=repo_root,
+        configuration=configuration,
+        platform="x64",
+        output_dir=output_dir,
+        executable=output_dir / "GargoyleX64.exe",
+        setup_pic=output_dir / "setup_x64.pic",
+        reentry_pic=output_dir / "reentry_x64.pic",
+    )
+
+
+def _required_artifact_paths(artifacts: GargoyleArtifacts) -> tuple[Path, ...]:
+    """Return non-optional artifact paths for a build.
+
+    Args:
+        artifacts: Candidate artifact layout.
+
+    Returns:
+        Required paths.
+    """
+    paths = [artifacts.executable, artifacts.setup_pic]
+    if artifacts.gadget_pic is not None:
+        paths.append(artifacts.gadget_pic)
+    if artifacts.reentry_pic is not None:
+        paths.append(artifacts.reentry_pic)
+    return tuple(paths)
 
 
 def resolve_msbuild(explicit: Path | None = None) -> Path:

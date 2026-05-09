@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from os import environ, pathsep
 from pathlib import Path
 
-from gargoyle_acceptance.environment import Configuration, Toolchain
+from gargoyle_acceptance.environment import Configuration, Platform, Toolchain
 from gargoyle_acceptance.errors import AcceptanceError
 
 
@@ -27,6 +27,7 @@ class BuildResult:
 def build_solution(
     repo_root: Path,
     configuration: Configuration,
+    platform: Platform,
     toolchain: Toolchain,
     *,
     timeout_seconds: float = 120.0,
@@ -36,6 +37,7 @@ def build_solution(
     Args:
         repo_root: Repository root containing `Gargoyle.sln`.
         configuration: Visual Studio configuration to build.
+        platform: Visual Studio solution platform to build.
         toolchain: Resolved toolchain paths.
         timeout_seconds: Maximum time allowed for MSBuild.
 
@@ -49,7 +51,7 @@ def build_solution(
         str(toolchain.msbuild),
         "Gargoyle.sln",
         f"/p:Configuration={configuration}",
-        "/p:Platform=x86",
+        f"/p:Platform={platform}",
         "/m",
     )
     try:

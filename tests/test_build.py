@@ -16,7 +16,7 @@ def test_build_solution_uses_expected_msbuild_command(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The build command stays narrow: configuration, x86 platform, and parallel build."""
+    """The build command stays narrow: configuration, platform, and parallel build."""
     seen: dict[str, object] = {}
 
     def fake_run(command: tuple[str, ...], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -27,7 +27,7 @@ def test_build_solution_uses_expected_msbuild_command(
     monkeypatch.setattr(build.subprocess, "run", fake_run)
     toolchain = Toolchain(msbuild=Path("MSBuild.exe"), nasm=Path("nasm.exe"))
 
-    result = build.build_solution(tmp_path, "Debug", toolchain)
+    result = build.build_solution(tmp_path, "Debug", "x86", toolchain)
 
     assert result.command == (
         "MSBuild.exe",
@@ -64,7 +64,7 @@ def test_build_solution_raises_on_failure(
     toolchain = Toolchain(msbuild=Path("MSBuild.exe"), nasm=Path("nasm.exe"))
 
     with pytest.raises(AcceptanceError, match="Build failed"):
-        build.build_solution(tmp_path, "Release", toolchain)
+        build.build_solution(tmp_path, "Release", "x64", toolchain)
 
 
 def test_build_solution_raises_on_timeout(
@@ -80,4 +80,4 @@ def test_build_solution_raises_on_timeout(
     toolchain = Toolchain(msbuild=Path("MSBuild.exe"), nasm=Path("nasm.exe"))
 
     with pytest.raises(AcceptanceError, match="Build timed out"):
-        build.build_solution(tmp_path, "Debug", toolchain, timeout_seconds=1)
+        build.build_solution(tmp_path, "Debug", "x86", toolchain, timeout_seconds=1)

@@ -10,10 +10,9 @@ small, reviewable, and easy to separate from the baseline demo.
   generalized framework or hide the original technique behind large abstraction
   layers.
 
-- If an x64 proof of concept lands, document it as a sibling architecture rather
-  than a transparent port. The x64 calling convention, stack alignment,
-  nonvolatile registers, unwind metadata, CFG, and CET all change the design
-  constraints.
+- Keep the x64 example documented as a sibling architecture rather than a
+  transparent port. The x64 calling convention, stack alignment, nonvolatile
+  registers, unwind metadata, CFG, and CET all change the design constraints.
 
 - Prefer visible, benign payload evidence for every architecture. The MessageBox
   pattern is intentionally simple because it makes runtime validation easy and
@@ -35,8 +34,9 @@ small, reviewable, and easy to separate from the baseline demo.
   defensive visibility.
 
 - Gadget assumptions: x86 `pop reg; pop esp; ret`-style pivots are not a direct
-  recipe for x64. A refresh should explain gadget provenance and failure modes
-  without encouraging broad gadget harvesting.
+  recipe for x64. The checked-in x64 example uses a separate re-entry PIC; any
+  future gadget or context-restoration design should explain provenance and
+  failure modes without encouraging broad gadget harvesting.
 
 - Mitigation interaction: CFG, CET, shadow stacks, and continuation-target
   validation can turn historical ROP assumptions into crashes or detections.
@@ -66,8 +66,8 @@ the PoC:
 - Keep the default branch focused on the buildable baseline and documented
   validation workflow.
 
-- Put exploratory x64 or alternate re-entry work in small branches or clearly
-  named docs until it has a stable build and a benign acceptance story.
+- Put alternate x64 re-entry work in small branches or clearly named docs until
+  it has a stable build and a benign acceptance story.
 
 - Document experiments that are interesting but too large, too brittle, or too
   operational for this repository instead of merging them into the core.
@@ -116,4 +116,3 @@ This page contributes to:
 - #19 by recording post-x64 directions that do not bloat the core PoC.
 - #17 by carrying responsible-use boundaries into future experiments.
 - #18 by requiring a validation story for future architecture work.
-

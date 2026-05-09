@@ -16,6 +16,7 @@ def _report(tmp_path: Path) -> AcceptanceReport:
     artifacts = GargoyleArtifacts(
         repo_root=tmp_path,
         configuration="Debug",
+        platform="x86",
         output_dir=tmp_path / "Debug",
         executable=tmp_path / "Debug" / "Gargoyle.exe",
         setup_pic=tmp_path / "Debug" / "setup.pic",

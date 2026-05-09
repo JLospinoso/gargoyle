@@ -28,6 +28,24 @@ VALID_OUTPUT = [
     "    Bottom of stack @ --> 0x00A80037",
     "    Stack trampoline @ -> 0x00A80038",
 ]
+VALID_X64_OUTPUT = [
+    '[ ] Loading x64 setup PIC from "setup_x64.pic".',
+    "[+] Loaded 113 bytes of x64 PIC.",
+    '[ ] Loading x64 re-entry PIC from "reentry_x64.pic".',
+    "[+] Loaded 144 bytes of x64 re-entry PIC.",
+    "[+] x64 timer/APC prototype configured.",
+    "    Gargoyle x64 PIC @ ----> 0x000001827D9B0000",
+    "    x64 re-entry PIC @ ----> 0x000001827D9C0000",
+    "    x64 APC callback @ ---> 0x000001827D9C0010",
+    "    Configuration @ -------> 0x00000057D1DAF658",
+    "    VirtualProtectEx @ ----> 0x00007FFD49A72340",
+    "    WaitForSingleObjectEx @ 0x00007FFD49A71230",
+    "    CreateWaitableTimerW @  0x00007FFD49A70000",
+    "    SetWaitableTimer @ ---> 0x00007FFD49A71111",
+    "    MessageBoxA @ --------> 0x00007FFD4B30CAC0",
+    "    Timer period @ -------> 15000 ms",
+    "[ ] Entering benign x64 PIC payload loop.",
+]
 
 
 class FakeProcess:
@@ -76,6 +94,14 @@ def test_parse_setup_output_accepts_complete_banner() -> None:
     assert parsed.addresses["ROP gadget"] == 0x6AE93472
 
 
+def test_parse_setup_output_accepts_x64_complete_banner() -> None:
+    """Setup parsing accepts the x64 timer/APC banner."""
+    parsed = harness.parse_setup_output(VALID_X64_OUTPUT, "x64")
+
+    assert parsed.addresses["Gargoyle x64 PIC"] == 0x000001827D9B0000
+    assert parsed.addresses["x64 APC callback"] == 0x000001827D9C0010
+
+
 def test_parse_setup_output_rejects_missing_marker() -> None:
     """Setup parsing identifies an incomplete setup chain."""
     with pytest.raises(AcceptanceError, match="Setup banner incomplete"):
@@ -112,6 +138,7 @@ def test_run_acceptance_orchestrates_build_and_runtime(
     artifacts = GargoyleArtifacts(
         repo_root=tmp_path,
         configuration="Debug",
+        platform="x86",
         output_dir=tmp_path / "Debug",
         executable=tmp_path / "Debug" / "Gargoyle.exe",
         setup_pic=tmp_path / "Debug" / "setup.pic",
@@ -130,16 +157,19 @@ def test_run_acceptance_orchestrates_build_and_runtime(
     monkeypatch.setattr(
         harness,
         "build_solution",
-        lambda root, configuration, toolchain: BuildResult(command=("MSBuild.exe",), output="ok"),
+        lambda root, configuration, platform, toolchain: BuildResult(
+            command=("MSBuild.exe",),
+            output="ok",
+        ),
     )
-    monkeypatch.setattr(harness, "artifacts_for", lambda root, configuration: artifacts)
+    monkeypatch.setattr(harness, "artifacts_for", lambda root, configuration, platform: artifacts)
     monkeypatch.setattr(harness, "verify_artifacts", lambda value: calls.append("artifacts"))
     monkeypatch.setattr(harness, "_start_gargoyle", lambda value: process)
     monkeypatch.setattr(harness, "MessageBoxController", object)
     monkeypatch.setattr(
         harness,
         "_wait_for_setup",
-        lambda proc, timeout_seconds: harness.parse_setup_output(VALID_OUTPUT),
+        lambda proc, platform, timeout_seconds: harness.parse_setup_output(VALID_OUTPUT),
     )
     monkeypatch.setattr(
         harness,
@@ -167,7 +197,7 @@ def test_wait_for_setup_reads_complete_banner() -> None:
     """The setup waiter parses complete stdout from a live process."""
     process = FakeLiveProcess(StringIO("\n".join(VALID_OUTPUT) + "\n"))
 
-    setup = harness._wait_for_setup(process, timeout_seconds=1)  # type: ignore[arg-type]
+    setup = harness._wait_for_setup(process, platform="x86", timeout_seconds=1)  # type: ignore[arg-type]
 
     assert setup.addresses["Stack trampoline"] == 0x00A80038
 
@@ -178,7 +208,7 @@ def test_wait_for_setup_reports_early_exit() -> None:
     process.returncode = 1
 
     with pytest.raises(AcceptanceError, match="exited early"):
-        harness._wait_for_setup(process, timeout_seconds=1)  # type: ignore[arg-type]
+        harness._wait_for_setup(process, platform="x86", timeout_seconds=1)  # type: ignore[arg-type]
 
 
 def test_wait_for_setup_reports_missing_stdout() -> None:
@@ -187,7 +217,7 @@ def test_wait_for_setup_reports_missing_stdout() -> None:
     process.stdout = None
 
     with pytest.raises(AcceptanceError, match="stdout unavailable"):
-        harness._wait_for_setup(process, timeout_seconds=1)  # type: ignore[arg-type]
+        harness._wait_for_setup(process, platform="x86", timeout_seconds=1)  # type: ignore[arg-type]
 
 
 def test_wait_for_setup_reports_timeout() -> None:
@@ -195,7 +225,7 @@ def test_wait_for_setup_reports_timeout() -> None:
     process = FakeLiveProcess(StringIO("partial\n"))
 
     with pytest.raises(AcceptanceError, match="Setup timed out"):
-        harness._wait_for_setup(process, timeout_seconds=0.01)  # type: ignore[arg-type]
+        harness._wait_for_setup(process, platform="x86", timeout_seconds=0.01)  # type: ignore[arg-type]
 
 
 def test_start_gargoyle_reports_launch_failure(
@@ -206,6 +236,7 @@ def test_start_gargoyle_reports_launch_failure(
     artifacts = GargoyleArtifacts(
         repo_root=tmp_path,
         configuration="Debug",
+        platform="x86",
         output_dir=tmp_path,
         executable=tmp_path / "Gargoyle.exe",
         setup_pic=tmp_path / "setup.pic",
@@ -247,6 +278,7 @@ def test_close_message_boxes_closes_requested_rounds() -> None:
         process=FakeProcess(),  # type: ignore[arg-type]
         controller=controller,  # type: ignore[arg-type]
         rounds=2,
+        title="gargoyle",
         timeout_seconds=1,
     )
 
@@ -298,5 +330,6 @@ def test_close_message_boxes_reports_early_exit() -> None:
             process=process,  # type: ignore[arg-type]
             controller=object(),  # type: ignore[arg-type]
             rounds=1,
+            title="gargoyle",
             timeout_seconds=1,
         )

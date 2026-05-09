@@ -20,8 +20,8 @@ boundaries, and safety context that matter for this project.
 - `Gargoyle.sln`, `Gargoyle.vcxproj`, `main.cpp`, `setup.nasm`, and `gadget.nasm` are the
   source of truth for the Win32 proof of concept. The root solution also includes the
   `GargoyleX64` project.
-- `GargoyleX64/` contains the sibling x64 prototype. It is not a replacement for the
-  Win32 timer/APC chain unless a plan explicitly changes that.
+- `GargoyleX64/` contains the sibling x64 timer/APC example. It is not a replacement
+  for the Win32 baseline unless a plan explicitly changes that.
 - `src/gargoyle_acceptance/` and `tests/` are the source of truth for the Python acceptance
   harness.
 - `justfile` is the source of truth for local validation commands.
@@ -31,9 +31,10 @@ boundaries, and safety context that matter for this project.
 
 ## Toolchain And Platform
 
-- Gargoyle is a 32-bit Windows proof of concept. Keep Visual Studio builds on `Platform=x86`
-  unless a plan explicitly covers another target. The `GargoyleX64/` prototype builds with
-  `Platform=x64` and should stay clearly separated from the Win32 baseline.
+- Gargoyle's reference baseline is a 32-bit Windows proof of concept. Keep Win32
+  validation on `Platform=x86` unless a plan explicitly changes it. The `GargoyleX64/`
+  sibling example builds with `Platform=x64` and should stay clearly separated from the
+  Win32 baseline.
 - The project expects a current Visual Studio C++ toolchain, Windows SDK selection through
   `WindowsTargetPlatformVersion` `10.0`, NASM on `PATH`, `uv`, and Python 3.13.
 - The `MSBUILD` environment variable may override MSBuild discovery. Do not hard-code
@@ -78,6 +79,8 @@ just build-x64-all
 just check
 uv run --all-groups gargoyle-acceptance --configuration Debug
 uv run --all-groups gargoyle-acceptance --configuration Release
+uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64
+uv run --all-groups gargoyle-acceptance --configuration Release --platform x64
 ```
 
 - Run targeted checks while iterating, then run `just ci` before claiming completion when

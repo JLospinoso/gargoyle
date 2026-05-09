@@ -36,6 +36,7 @@ nav:
   - Acceptance Harness: acceptance.md
   - Validation Checklist: validation-checklist.md
   - Win32 Architecture: win32-architecture.md
+  - x64 Architecture: x64-architecture.md
   - Responsible Use: responsible-use.md
   - Future Work: future-work.md
   - References: references.md

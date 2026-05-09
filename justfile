@@ -66,8 +66,20 @@ build-all:
   just build-release
   just build-x64-all
 
-acceptance configuration="Debug":
-  uv run --all-groups gargoyle-acceptance --configuration {{configuration}}
+acceptance configuration="Debug" platform="x86":
+  uv run --all-groups gargoyle-acceptance --configuration {{configuration}} --platform {{platform}}
+
+acceptance-x86 configuration="Debug":
+  just acceptance {{configuration}} x86
+
+acceptance-x64 configuration="Debug":
+  just acceptance {{configuration}} x64
+
+acceptance-all:
+  just acceptance-x86 Debug
+  just acceptance-x86 Release
+  just acceptance-x64 Debug
+  just acceptance-x64 Release
 
 check:
   just format-check

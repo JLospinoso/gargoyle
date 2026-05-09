@@ -1,15 +1,18 @@
-# Gargoyle x64 Prototype
+# Gargoyle x64 Example
 
-This directory contains a minimal, sibling x64 prototype for issue #2. It does
-not replace the historical Win32 proof of concept in the repository root.
+This directory contains a sibling x64 example for issue #2. It does not replace
+the historical Win32 proof of concept in the repository root.
 
-The prototype is intentionally small and benign:
+The example is intentionally small and benign:
 
-- `GargoyleX64.vcxproj` builds only `Platform=x64`.
-- `setup_x64.nasm` is a raw x64 PIC entry point assembled by NASM.
-- `main_x64.cpp` loads the PIC, prepares a pointer-sized configuration block,
-  resolves the two Windows APIs the PIC needs, and invokes the PIC.
-- The payload is a single `MessageBoxA` with the caption/text `gargoyle x64`.
+- `GargoyleX64.vcxproj` builds only `Platform=x64` through the root
+  `Gargoyle.sln`.
+- `setup_x64.nasm` is the main raw x64 PIC entry point.
+- `reentry_x64.nasm` is the executable wait/APC re-entry PIC.
+- `main_x64.cpp` loads both PIC blobs, prepares a pointer-sized configuration
+  block, resolves the Windows APIs the PIC needs, and invokes the setup PIC.
+- The payload is a repeating `MessageBoxA` with the caption/text
+  `gargoyle x64`.
 
 ## Build
 
@@ -22,53 +25,53 @@ MSBuild.exe Gargoyle.sln /p:Configuration=Debug /p:Platform=x64 /m
 MSBuild.exe Gargoyle.sln /p:Configuration=Release /p:Platform=x64 /m
 ```
 
-Run the executable from its output directory so it can find `setup_x64.pic`:
+With the current Visual Studio defaults, the root solution emits the x64 outputs
+under `x64\Debug\` or `x64\Release\`. Run the executable from its output
+directory so it can find `setup_x64.pic` and `reentry_x64.pic`:
 
 ```powershell
-Push-Location GargoyleX64\Debug
+Push-Location x64\Debug
 .\GargoyleX64.exe
 Pop-Location
 ```
 
 ## Design Notes
 
-The x64 path is a sibling design rather than a direct port of `setup.nasm`.
-The Win32 PIC depends on stack arguments and an `esp`-based stack pivot. The x64
-prototype instead demonstrates the mechanics that must be correct before any
-larger Gargoyle chain is attempted:
+The x64 path is a sibling design rather than a direct port of `setup.nasm`. The
+Win32 PIC depends on stack arguments and an `esp`-based stack pivot. The x64
+example instead uses two PIC blobs:
+
+- `setup_x64.pic` owns the setup state and benign payload loop.
+- `reentry_x64.pic` remains executable while `setup_x64.pic` is parked
+  read-only during alertable waits.
+
+The setup PIC creates a waitable timer, registers the callback entry inside the
+re-entry PIC, displays the benign MessageBox payload, and then calls the re-entry
+PIC's wait entry. The wait entry marks `setup_x64.pic` `PAGE_READONLY` and enters
+`WaitForSingleObjectEx(..., TRUE)`. Timer re-entry restores
+`setup_x64.pic` to `PAGE_EXECUTE_READ`, returns to the setup loop, and displays
+the benign payload again.
+
+The implementation follows the Win64 ABI requirements that must be correct
+before larger designs are considered:
 
 - the configuration block uses pointer-sized fields;
-- the PIC receives its configuration pointer in `rcx`;
+- the setup PIC receives its configuration pointer in `rcx`;
 - API calls place the first four arguments in `rcx`, `rdx`, `r8`, and `r9`;
 - every call reserves the required 32-byte shadow space;
 - the stack is kept 16-byte aligned across calls;
-- the fifth `VirtualProtectEx` argument is passed on the stack; and
-- the PIC preserves the nonvolatile `rbx` register that it uses for the
-  configuration pointer.
+- fifth and sixth arguments are passed on the stack; and
+- nonvolatile registers used by the PIC are preserved.
 
-The PIC calls `VirtualProtectEx(GetCurrentProcess(), setup_addr, setup_length,
-PAGE_EXECUTE_READ, &old_protection)` and then calls `MessageBoxA`. This proves
-the raw x64 PIC can consume the shared configuration and make Win64 ABI calls,
-but it deliberately stops before adding a timer re-entry chain or a replacement
-control-transfer strategy.
+## Validation
 
-## Remaining Blockers
+Run the platform-aware acceptance harness from a Windows desktop session:
 
-This is the documented minimal x64 prototype requested by issue #2, not the
-complete x64 Gargoyle chain.
+```powershell
+uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64
+uv run --all-groups gargoyle-acceptance --configuration Release --platform x64
+```
 
-Before treating x64 as equivalent to the Win32 demonstration, the project still
-needs:
-
-- an x64-safe re-entry mechanism for `WaitForSingleObjectEx` /
-  `SetWaitableTimer`;
-- a replacement for the x86 `pop reg; pop esp; ret` stack-pivot assumption;
-- a mitigation review for CFG, CET shadow stacks, and the consequences of
-  executing raw PIC outside normal image/unwind metadata;
-- explicit failure diagnostics for systems where policy blocks dynamically
-  generated executable memory; and
-- acceptance-harness support for an x64 run that can close the benign
-  `MessageBoxA` payload without disturbing the Win32 checks.
-
-The current prototype keeps those items visible as design work instead of
-embedding a fragile or unsafe half-port in the main Win32 proof of concept.
+The harness validates the x64 setup banner and closes two benign `gargoyle x64`
+MessageBox rounds. The first window proves the initial PIC handoff; the second
+window proves timer/APC re-entry.

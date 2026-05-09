@@ -20,7 +20,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="setup.nasm" />
-    <CustomBuild Include="gadget.nasm" />
+    <NasmPic Include="setup.nasm">
+      <Filter>Source Files</Filter>
+    </NasmPic>
+    <NasmPic Include="gadget.nasm">
+      <Filter>Source Files</Filter>
+    </NasmPic>
   </ItemGroup>
 </Project>

@@ -11,6 +11,7 @@ from gargoyle_acceptance.environment import (
     artifacts_for,
     coerce_optional_path,
     parse_configuration,
+    parse_platform,
     require_windows,
     resolve_msbuild,
     resolve_nasm,
@@ -31,6 +32,18 @@ def test_parse_configuration_rejects_unknown_value() -> None:
     """Configuration parsing gives a clear error for unsupported names."""
     with pytest.raises(AcceptanceError, match="Unsupported configuration"):
         parse_configuration("x64")
+
+
+def test_parse_platform_accepts_supported_values() -> None:
+    """Platform parsing accepts the two supported Visual Studio solution platforms."""
+    assert parse_platform("x86") == "x86"
+    assert parse_platform("X64") == "x64"
+
+
+def test_parse_platform_rejects_unknown_value() -> None:
+    """Platform parsing gives a clear error for unsupported names."""
+    with pytest.raises(AcceptanceError, match="Unsupported platform"):
+        parse_platform("arm64")
 
 
 def test_require_windows_rejects_non_windows() -> None:
@@ -94,7 +107,32 @@ def test_artifacts_for_uses_configuration_output_directory(tmp_path: Path) -> No
     artifacts = artifacts_for(tmp_path, "Debug")
 
     assert artifacts.output_dir == tmp_path / "Debug"
+    assert artifacts.platform == "x86"
     assert artifacts.executable == tmp_path / "Debug" / "Gargoyle.exe"
+
+
+def test_artifacts_for_uses_x64_default_output_directory(tmp_path: Path) -> None:
+    """x64 artifact paths match the root solution's Visual Studio default output."""
+    artifacts = artifacts_for(tmp_path, "Release", "x64")
+
+    assert artifacts.output_dir == tmp_path / "x64" / "Release"
+    assert artifacts.platform == "x64"
+    assert artifacts.executable == tmp_path / "x64" / "Release" / "GargoyleX64.exe"
+    assert artifacts.setup_pic == tmp_path / "x64" / "Release" / "setup_x64.pic"
+    assert artifacts.reentry_pic == tmp_path / "x64" / "Release" / "reentry_x64.pic"
+
+
+def test_artifacts_for_selects_existing_candidate(tmp_path: Path) -> None:
+    """Artifact discovery accepts an alternate VS output candidate when files exist there."""
+    output_dir = tmp_path / "GargoyleX64" / "Debug"
+    output_dir.mkdir(parents=True)
+    (output_dir / "GargoyleX64.exe").write_text("")
+    (output_dir / "setup_x64.pic").write_text("")
+    (output_dir / "reentry_x64.pic").write_text("")
+
+    artifacts = artifacts_for(tmp_path, "Debug", "x64")
+
+    assert artifacts.output_dir == output_dir
 
 
 def test_resolve_msbuild_accepts_explicit_path(tmp_path: Path) -> None:

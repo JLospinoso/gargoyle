@@ -17,6 +17,122 @@ without reading the full chat.
 
 ## Active Plans
 
+### Plan: MSBuild Reshape And x64 Timer-Reentry Parity
+
+#### Objective
+
+Make Visual Studio/MSBuild the polished native build authority and upgrade the x64 example
+from a one-shot Win64 ABI smoke to a benign timer/APC re-entry demonstration.
+
+Definition of done:
+
+- `Gargoyle.sln` is the only solution entrypoint.
+- Shared MSBuild files hold common C++ and NASM behavior.
+- x64 shows two `gargoyle x64` MessageBox rounds through timer/APC re-entry.
+- The Python acceptance harness can validate both `x86` and `x64`.
+- Docs, tests, `just ci`, and GitHub Actions pass.
+
+#### User Decisions And Assumptions
+
+User decisions:
+
+- 2026-05-09: Use MSBuild-native project reshaping rather than CMake.
+- 2026-05-09: Target timer re-entry parity for x64.
+- 2026-05-09: Do a full project reshaping.
+- 2026-05-09: Use an external x64 re-entry stub.
+- 2026-05-09: Let Visual Studio defaults drive native output directories.
+
+Assumptions:
+
+- x64 parity means timer/APC re-entry plus read-only idle `setup_x64.pic`, not a full
+  x64 ROP/NtContinue design.
+- The external x64 PIC may remain executable as the re-entry surface, analogous to the
+  Win32 executable gadget surface.
+- Payloads remain benign MessageBox demonstrations only.
+
+#### Context And Evidence
+
+- `Gargoyle.sln` already contains `Gargoyle` and `GargoyleX64`.
+- `GargoyleX64` currently loads `setup_x64.pic`, calls `VirtualProtectEx`, shows one
+  `gargoyle x64` MessageBox, and returns.
+- The acceptance harness currently hardcodes `Platform=x86` and Win32 artifacts.
+- Current branch: `codex/issue-backlog`, PR #21.
+
+#### Interfaces And Data Flow
+
+- `gargoyle-acceptance` gains `--platform x86|x64`, defaulting to `x86`.
+- x64 runtime gains a second raw PIC, `reentry_x64.pic`, used as the wait/re-entry surface.
+- `just ci` continues as the canonical gate and builds both platforms.
+- Documentation records the MSBuild-native choice and the x64 timer/APC behavior.
+
+#### Task Graph
+
+| ID | Task | Depends On | Owner | Files/Area | Validation |
+| --- | --- | --- | --- | --- | --- |
+| T1 | Record plan state | none | main | `.agent/PLANS.md` | review diff |
+| T2 | Reshape MSBuild files | T1 | main | solution/project/build files | `just build-all` |
+| T3 | Implement x64 timer/APC loop | T2 | main | `GargoyleX64/` | x64 smoke |
+| T4 | Extend harness and tests | T2-T3 | main | `src/`, `tests/` | `just test`, live acceptance |
+| T5 | Update docs and CI evidence | T4 | main | docs/readmes/agent notes | `just docs`, `just ci` |
+
+#### Implementation Steps
+
+1. Add shared MSBuild props/targets and remove the standalone x64 solution.
+2. Convert NASM custom builds to shared `NasmPic` items that emit to `$(OutDir)`.
+3. Add `reentry_x64.nasm` and expand the x64 configuration/runtime loop.
+4. Add platform-aware build, artifact discovery, setup parsing, and MessageBox validation.
+5. Update docs and validation commands.
+6. Run targeted validation, `just ci`, push the PR branch, and monitor CI.
+
+#### Validation
+
+Targeted checks:
+
+- `just build-debug`
+- `just build-release`
+- `just build-x64-all`
+- `just check`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x86`
+- `uv run --all-groups gargoyle-acceptance --configuration Release --platform x86`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64`
+- `uv run --all-groups gargoyle-acceptance --configuration Release --platform x64`
+
+Canonical gate:
+
+- `just ci`
+
+#### Risks And Stop Conditions
+
+- Stop if x64 timer/APC parity requires unsafe payload behavior or mitigation-bypass work.
+- Stop if dynamically generated executable memory is blocked in a way that needs user policy
+  judgment.
+- Stop if CI needs more than three fix iterations.
+
+#### Progress Log
+
+- 2026-05-09: Plan approved by user and implementation started.
+- 2026-05-09: Added shared MSBuild props/targets, removed the standalone x64 solution,
+  and moved NASM PIC output to `$(OutDir)`.
+- 2026-05-09: Implemented `reentry_x64.pic` and upgraded the x64 setup PIC to a benign
+  timer/APC re-entry loop.
+- 2026-05-09: Extended `gargoyle-acceptance` with `--platform x86|x64` and added x64
+  banner/artifact validation.
+- 2026-05-09: Validation passed: `just check`, `just build-all`, `just acceptance-all`,
+  and `just ci`.
+
+#### Handoff Packet
+
+- Branch: `codex/issue-backlog`
+- PR/issue: PR #21, issue #2
+- Current status: implementation complete locally
+- Completed: MSBuild reshape; x64 timer/APC re-entry; platform-aware acceptance harness;
+  docs/tests/agent notes
+- Remaining: commit, push, and monitor GitHub Actions
+- Validation run: `just check`, `just build-all`, `just acceptance-all`, `just ci`
+- Failed/skipped checks: none
+- Residual risks: x64 uses a separate executable re-entry PIC rather than an x64 ROP or
+  context-restoration design; this is intentional and documented.
+
 ### Plan: 2026 Issue Backlog Completion
 
 #### Objective
@@ -141,6 +257,8 @@ Targeted checks:
 - `just build-all`
 - `uv run --all-groups gargoyle-acceptance --configuration Debug`
 - `uv run --all-groups gargoyle-acceptance --configuration Release`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64`
+- `uv run --all-groups gargoyle-acceptance --configuration Release --platform x64`
 
 Canonical gate:
 
@@ -176,6 +294,8 @@ Manual or live checks:
   architecture, Win32 diagnostics, and x64 prototype work packages.
 - 2026-05-08: `just build-x64-all`, `just docs`, `just ci`, Win32 Debug/Release
   acceptance, and a Debug x64 MessageBox smoke passed on `codex/issue-backlog`.
+- 2026-05-09: Follow-up work upgraded x64 from a one-shot prototype to a
+  timer/APC re-entry example with `just acceptance-all` coverage.
 
 #### Decision Log
 
@@ -185,19 +305,16 @@ Manual or live checks:
 #### Handoff Packet
 
 - Branch: `codex/issue-backlog`
-- PR/issue: to be opened against `master`
-- Current status: implementation complete locally; PR creation and CI monitoring remain
-- Completed: issue inventory; agent scaffolding files created locally
-- Remaining: push, PR creation, CI monitoring
-- Validation run: prior `just ci` passed after adding `AGENTS.md` and `.agent/PLANS.md`;
-  package-level worker validation passed for docs, Win32 build/acceptance, and x64
-  build/smoke; integrated branch validation passed with `just build-x64-all`, `just docs`,
-  `just ci`, `uv run --all-groups gargoyle-acceptance --configuration Debug`,
-  `uv run --all-groups gargoyle-acceptance --configuration Release`, and a Debug x64
-  MessageBox smoke that reported `[+] x64 prototype returned.`
-- Failed/skipped checks: none yet
+- PR/issue: PR #21 against `master`
+- Current status: implementation complete locally; follow-up push and CI monitoring remain
+- Completed: issue inventory; agent scaffolding; docs/reference work; Win32 diagnostics;
+  x64 timer/APC re-entry; MSBuild-native reshaping; platform-aware acceptance harness
+- Remaining: commit, push, and monitor CI
+- Validation run: `just build-all`, `just check`, `just acceptance-all`, and `just ci`
+- Failed/skipped checks: none
 - Rollout or operational notes: stop before merge
-- Residual risks: x64 scope may need to land as minimal prototype with documented blockers
+- Residual risks: x64 uses a separate executable re-entry PIC rather than an x64 ROP or
+  context-restoration design; this is intentional and documented.
 
 ## Plan Template
 
