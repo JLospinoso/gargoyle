@@ -137,6 +137,9 @@ CI-safe:
   open MessageBox windows.
 - Headless ARM64 and ARM64EC smoke checks that run two benign timer/APC rounds
   without MessageBox automation.
+- ARM64EC runtime checks that execute PIC from pages allocated as EC dynamic
+  code. Plain `VirtualAlloc` executable pages are treated as x64 dynamic code in
+  ARM64EC processes and do not prove native ARM64EC PIC execution.
 
 Desktop-only:
 

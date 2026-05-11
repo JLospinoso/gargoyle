@@ -5,7 +5,7 @@ evasion, process-memory forensics, and later sleep-obfuscation work. It is a
 curated map, not an endorsement of every linked project or an implementation
 guide. The repository should remain a small, benign research artifact.
 
-Access dates below use 2026-05-08.
+Access dates are recorded per entry.
 
 ## Original Work
 
@@ -114,6 +114,14 @@ Access dates below use 2026-05-08.
 - [Using Waitable Timers with an Asynchronous Procedure Call](https://learn.microsoft.com/en-us/windows/win32/sync/using-a-waitable-timer-with-an-asynchronous-procedure-call)
   is Microsoft's conceptual example for waitable timers with APC completion
   routines. Accessed 2026-05-08.
+
+- [Understanding Arm64EC ABI and assembly code](https://learn.microsoft.com/en-us/windows/arm/arm64ec-abi)
+  documents ARM64EC indirect-call checking, thunking, and dynamic-code
+  allocation requirements. Accessed 2026-05-11.
+
+- [Overview of ARM64EC ABI conventions](https://learn.microsoft.com/en-us/cpp/build/arm64ec-windows-abi-conventions)
+  summarizes ARM64EC register mapping, x64 interoperability, and entry/exit
+  thunk behavior. Accessed 2026-05-11.
 
 - [VMMap](https://learn.microsoft.com/en-us/sysinternals/downloads/vmmap) is the
   Sysinternals process memory viewer used in the original demo instructions and

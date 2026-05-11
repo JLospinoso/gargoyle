@@ -184,21 +184,31 @@ Manual or live checks:
   ARM64EC. Updated harness expectations, docs, and setup evidence labels.
 - 2026-05-11: Local validation passed: `just check`, x86 Debug/Release live acceptance, x64
   Debug/Release live acceptance, and `just ci`.
+- 2026-05-11: Pushed `2a8c336`; hosted Windows build passed and hosted ARM smoke narrowed to
+  an ARM64EC access violation immediately after entering dynamic PIC memory. The likely cause
+  matches Microsoft's ARM64EC dynamic-code rule: plain `VirtualAlloc` executable pages are
+  classified as x64 dynamic code unless allocated with `MEM_EXTENDED_PARAMETER_EC_CODE`.
+- 2026-05-11: Added ARM64EC EC-code dynamic allocation, instruction-cache flushing, and
+  ARM64EC C++ API wrappers so MSVC-generated exit thunks handle Win32 calls from the PIC path.
+- 2026-05-11: Local validation for the ARM64EC fix passed: `just check`, `just ci`, and
+  `just docs`.
 
 #### Handoff Packet
 
 - Branch: `codex/arm64-arm64ec-parity`
 - PR/issue: PR #23, issue #22
-- Current status: implementation complete locally; hosted ARM CI validation remains
+- Current status: first hosted ARM failure fix implemented and validated locally; hosted ARM
+  CI validation remains
 - Completed: failure analysis, fix plan, x86/x64/ARM64/ARM64EC wait semantic fix, harness and
   docs updates
 - Remaining: push PR #23 update and monitor hosted ARM smoke
 - Validation run: local API probe; `just check`; x86 Debug/Release live acceptance; x64
-  Debug/Release live acceptance; `just ci`
+  Debug/Release live acceptance; `just ci`; ARM64EC fix `just check`, `just ci`, and
+  `just docs`
 - Failed/skipped checks: local ARM build remains unavailable because this workstation lacks
   ARM64/ARM64EC Visual Studio tools; PR #23 hosted ARM smoke must validate ARM runtime
-- Residual risks: ARM64EC ABI/call-checking may need extra design care if hosted CI exposes
-  a runtime-specific failure
+- Residual risks: ARM64EC callback delivery from EC-marked dynamic PIC still needs hosted
+  confirmation
 
 ### Plan: Issue #22 ARM64/ARM64EC Parity And Windows-On-Arm CI Smoke
 

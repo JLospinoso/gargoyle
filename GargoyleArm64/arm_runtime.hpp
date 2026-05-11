@@ -19,6 +19,10 @@
 #define IMAGE_FILE_MACHINE_ARM64EC 0xA641
 #endif
 
+#if defined(_M_ARM64EC) && !defined(MEM_EXTENDED_PARAMETER_EC_CODE)
+#define MEM_EXTENDED_PARAMETER_EC_CODE 0x00000040
+#endif
+
 namespace gargoyle_arm {
   using PicEntry = void (*)(void*);
 
@@ -284,23 +288,89 @@ namespace gargoyle_arm {
     return reinterpret_cast<void*>(address);
   }
 
-  inline void* allocate_pic(const std::string& filename, size_t& pic_size) {
-    const auto bytes = read_binary(filename);
-    pic_size = bytes.size();
+  inline void* allocate_pic_region(size_t pic_size) {
+#if defined(_M_ARM64EC)
+    MEM_EXTENDED_PARAMETER ec_code_parameter{};
+    ec_code_parameter.Type = MemExtendedParameterAttributeFlags;
+    ec_code_parameter.ULong64 = MEM_EXTENDED_PARAMETER_EC_CODE;
 
+    const auto memory = VirtualAlloc2(
+      GetCurrentProcess(),
+      nullptr,
+      pic_size,
+      MEM_COMMIT | MEM_RESERVE,
+      PAGE_READWRITE,
+      &ec_code_parameter,
+      1
+    );
+    if (memory == nullptr) {
+      throw std::runtime_error("[-] " + win32_error("VirtualAlloc2 EC_CODE PIC allocation"));
+    }
+    return memory;
+#else
     const auto memory = VirtualAlloc(nullptr, pic_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     if (memory == nullptr) {
       throw std::runtime_error("[-] " + win32_error("VirtualAlloc PIC allocation"));
     }
+    return memory;
+#endif
+  }
 
+  inline void* allocate_pic(const std::string& filename, size_t& pic_size) {
+    const auto bytes = read_binary(filename);
+    pic_size = bytes.size();
+
+    const auto memory = allocate_pic_region(pic_size);
     std::memcpy(memory, bytes.data(), bytes.size());
 
     DWORD old_protection = 0;
     if (!VirtualProtect(memory, pic_size, PAGE_EXECUTE_READ, &old_protection)) {
       throw std::runtime_error("[-] " + win32_error("VirtualProtect PIC protection"));
     }
+    if (!FlushInstructionCache(GetCurrentProcess(), memory, pic_size)) {
+      throw std::runtime_error("[-] " + win32_error("FlushInstructionCache PIC bytes"));
+    }
     return memory;
   }
+
+#if defined(_M_ARM64EC)
+  inline BOOL WINAPI arm64ec_virtual_protect_ex(
+    HANDLE process,
+    LPVOID address,
+    SIZE_T size,
+    DWORD new_protection,
+    PDWORD old_protection
+  ) {
+    return VirtualProtectEx(process, address, size, new_protection, old_protection);
+  }
+
+  inline DWORD WINAPI arm64ec_sleep_ex(DWORD milliseconds, BOOL alertable) {
+    return SleepEx(milliseconds, alertable);
+  }
+
+  inline HANDLE WINAPI arm64ec_create_waitable_timer_w(
+    LPSECURITY_ATTRIBUTES timer_attributes,
+    BOOL manual_reset,
+    LPCWSTR timer_name
+  ) {
+    return CreateWaitableTimerW(timer_attributes, manual_reset, timer_name);
+  }
+
+  inline BOOL WINAPI arm64ec_set_waitable_timer(
+    HANDLE timer,
+    const LARGE_INTEGER* due_time,
+    LONG period,
+    PTIMERAPCROUTINE completion_routine,
+    LPVOID completion_argument,
+    BOOL resume
+  ) {
+    return SetWaitableTimer(timer, due_time, period, completion_routine, completion_argument, resume);
+  }
+
+  inline int WINAPI arm64ec_message_box_a(HWND window, LPCSTR text, LPCSTR caption, UINT type) {
+    return MessageBoxA(window, text, caption, type);
+  }
+#endif
 
   inline const char* machine_name(USHORT machine) {
     switch (machine) {
@@ -415,11 +485,19 @@ namespace gargoyle_arm {
     config.setup_length = setup_size;
     config.reentry_wait = reentry_memory;
     config.reentry_callback = reentry_callback;
+#if defined(_M_ARM64EC)
+    config.VirtualProtectEx = reinterpret_cast<void*>(&arm64ec_virtual_protect_ex);
+    config.SleepEx = reinterpret_cast<void*>(&arm64ec_sleep_ex);
+    config.CreateWaitableTimerW = reinterpret_cast<void*>(&arm64ec_create_waitable_timer_w);
+    config.SetWaitableTimer = reinterpret_cast<void*>(&arm64ec_set_waitable_timer);
+    config.MessageBoxA = reinterpret_cast<void*>(&arm64ec_message_box_a);
+#else
     config.VirtualProtectEx = resolve_export(L"kernel32.dll", "VirtualProtectEx");
     config.SleepEx = resolve_export(L"kernel32.dll", "SleepEx");
     config.CreateWaitableTimerW = resolve_export(L"kernel32.dll", "CreateWaitableTimerW");
     config.SetWaitableTimer = resolve_export(L"kernel32.dll", "SetWaitableTimer");
     config.MessageBoxA = resolve_export(L"user32.dll", "MessageBoxA");
+#endif
     config.due_time = -static_cast<int64_t>(options.period_ms) * 10000;
     config.interval = options.period_ms;
     config.mode = options.mode == RuntimeMode::live ? 0U : 1U;
