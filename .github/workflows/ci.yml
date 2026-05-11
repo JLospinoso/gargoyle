@@ -81,7 +81,12 @@ jobs:
         run: |
           $nasm = Get-Command nasm.exe -ErrorAction SilentlyContinue
           if (-not $nasm) {
-            winget install --id NASM.NASM --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+            $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+            if ($winget) {
+              winget install --id NASM.NASM --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+            } else {
+              choco install nasm -y --no-progress
+            }
           }
 
           $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'
