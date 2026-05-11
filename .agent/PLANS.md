@@ -192,19 +192,23 @@ Manual or live checks:
   ARM64EC C++ API wrappers so MSVC-generated exit thunks handle Win32 calls from the PIC path.
 - 2026-05-11: Local validation for the ARM64EC fix passed: `just check`, `just ci`, and
   `just docs`.
+- 2026-05-11: Hosted ARM fix iteration 1 failed at ARM64EC link time because the VS2022
+  ARM64EC import libraries did not resolve `VirtualAlloc2`. Switched EC allocation to resolve
+  `VirtualAlloc2` dynamically from `kernelbase.dll`.
+- 2026-05-11: Local validation after dynamic resolution passed: `just check` and `just ci`.
 
 #### Handoff Packet
 
 - Branch: `codex/arm64-arm64ec-parity`
 - PR/issue: PR #23, issue #22
-- Current status: first hosted ARM failure fix implemented and validated locally; hosted ARM
+- Current status: second hosted ARM failure fix implemented and validated locally; hosted ARM
   CI validation remains
 - Completed: failure analysis, fix plan, x86/x64/ARM64/ARM64EC wait semantic fix, harness and
   docs updates
 - Remaining: push PR #23 update and monitor hosted ARM smoke
 - Validation run: local API probe; `just check`; x86 Debug/Release live acceptance; x64
   Debug/Release live acceptance; `just ci`; ARM64EC fix `just check`, `just ci`, and
-  `just docs`
+  `just docs`; dynamic `VirtualAlloc2` resolution fix `just check` and `just ci`
 - Failed/skipped checks: local ARM build remains unavailable because this workstation lacks
   ARM64/ARM64EC Visual Studio tools; PR #23 hosted ARM smoke must validate ARM runtime
 - Residual risks: ARM64EC callback delivery from EC-marked dynamic PIC still needs hosted

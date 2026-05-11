@@ -290,11 +290,23 @@ namespace gargoyle_arm {
 
   inline void* allocate_pic_region(size_t pic_size) {
 #if defined(_M_ARM64EC)
+    using VirtualAlloc2Fn = PVOID(WINAPI*)(
+      HANDLE,
+      PVOID,
+      SIZE_T,
+      ULONG,
+      ULONG,
+      MEM_EXTENDED_PARAMETER*,
+      ULONG
+    );
+
+    const auto virtual_alloc2 =
+      reinterpret_cast<VirtualAlloc2Fn>(resolve_export(L"kernelbase.dll", "VirtualAlloc2"));
     MEM_EXTENDED_PARAMETER ec_code_parameter{};
     ec_code_parameter.Type = MemExtendedParameterAttributeFlags;
     ec_code_parameter.ULong64 = MEM_EXTENDED_PARAMETER_EC_CODE;
 
-    const auto memory = VirtualAlloc2(
+    const auto memory = virtual_alloc2(
       GetCurrentProcess(),
       nullptr,
       pic_size,
