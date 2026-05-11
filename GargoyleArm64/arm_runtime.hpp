@@ -306,17 +306,24 @@ namespace gargoyle_arm {
     ec_code_parameter.Type = MemExtendedParameterAttributeFlags;
     ec_code_parameter.ULong64 = MEM_EXTENDED_PARAMETER_EC_CODE;
 
-    const auto memory = virtual_alloc2(
+    const auto reservation = virtual_alloc2(
       GetCurrentProcess(),
       nullptr,
       pic_size,
-      MEM_COMMIT | MEM_RESERVE,
-      PAGE_READWRITE,
+      MEM_RESERVE,
+      PAGE_EXECUTE_READ,
       &ec_code_parameter,
       1
     );
+    if (reservation == nullptr) {
+      throw std::runtime_error("[-] " + win32_error("VirtualAlloc2 EC_CODE PIC reservation"));
+    }
+
+    const auto memory = VirtualAlloc(reservation, pic_size, MEM_COMMIT, PAGE_READWRITE);
     if (memory == nullptr) {
-      throw std::runtime_error("[-] " + win32_error("VirtualAlloc2 EC_CODE PIC allocation"));
+      const auto error = GetLastError();
+      VirtualFree(reservation, 0, MEM_RELEASE);
+      throw std::runtime_error("[-] " + win32_error("VirtualAlloc EC_CODE PIC commit", error));
     }
     return memory;
 #else

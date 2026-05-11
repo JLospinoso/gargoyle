@@ -196,23 +196,30 @@ Manual or live checks:
   ARM64EC import libraries did not resolve `VirtualAlloc2`. Switched EC allocation to resolve
   `VirtualAlloc2` dynamically from `kernelbase.dll`.
 - 2026-05-11: Local validation after dynamic resolution passed: `just check` and `just ci`.
+- 2026-05-11: Hosted ARM fix iteration 2 built ARM64EC, then failed at runtime with
+  `VirtualAlloc2 EC_CODE PIC allocation failed (GetLastError=87)`. Adjusted allocation to
+  reserve EC-code address space with `VirtualAlloc2` before committing writable storage
+  inside that reservation.
+- 2026-05-11: Local validation after reserve-then-commit allocation passed: `just check` and
+  `just ci`.
 
 #### Handoff Packet
 
 - Branch: `codex/arm64-arm64ec-parity`
 - PR/issue: PR #23, issue #22
-- Current status: second hosted ARM failure fix implemented and validated locally; hosted ARM
-  CI validation remains
+- Current status: third and final hosted ARM failure fix implemented and validated locally;
+  hosted ARM CI validation remains
 - Completed: failure analysis, fix plan, x86/x64/ARM64/ARM64EC wait semantic fix, harness and
   docs updates
 - Remaining: push PR #23 update and monitor hosted ARM smoke
 - Validation run: local API probe; `just check`; x86 Debug/Release live acceptance; x64
   Debug/Release live acceptance; `just ci`; ARM64EC fix `just check`, `just ci`, and
-  `just docs`; dynamic `VirtualAlloc2` resolution fix `just check` and `just ci`
+  `just docs`; dynamic `VirtualAlloc2` resolution fix `just check` and `just ci`;
+  reserve-then-commit allocation fix `just check` and `just ci`
 - Failed/skipped checks: local ARM build remains unavailable because this workstation lacks
   ARM64/ARM64EC Visual Studio tools; PR #23 hosted ARM smoke must validate ARM runtime
 - Residual risks: ARM64EC callback delivery from EC-marked dynamic PIC still needs hosted
-  confirmation
+  confirmation; stop and hand off if the next hosted ARM smoke fails
 
 ### Plan: Issue #22 ARM64/ARM64EC Parity And Windows-On-Arm CI Smoke
 
