@@ -40,7 +40,7 @@ docs-serve:
   uv run --all-groups mkdocs serve -a 127.0.0.1:8000
 
 build configuration:
-  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform=x86 /m
+  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; $extra = @(); if ($env:GARGOYLE_PLATFORM_TOOLSET) { $extra += "/p:PlatformToolset=$env:GARGOYLE_PLATFORM_TOOLSET" }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform=x86 $extra /m
 
 build-debug:
   just build Debug
@@ -49,7 +49,7 @@ build-release:
   just build Release
 
 build-x64 configuration:
-  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform=x64 /m
+  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; $extra = @(); if ($env:GARGOYLE_PLATFORM_TOOLSET) { $extra += "/p:PlatformToolset=$env:GARGOYLE_PLATFORM_TOOLSET" }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform=x64 $extra /m
 
 build-x64-debug:
   just build-x64 Debug
@@ -91,7 +91,7 @@ build-all:
   just build-x64-all
 
 native-analyze configuration="Debug" platform="x86":
-  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform={{platform}} /p:RunCodeAnalysis=true /m:1
+  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; $extra = @(); if ($env:GARGOYLE_PLATFORM_TOOLSET) { $extra += "/p:PlatformToolset=$env:GARGOYLE_PLATFORM_TOOLSET" }; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform={{platform}} /p:RunCodeAnalysis=true $extra /m:1
 
 native-analyze-all:
   just native-analyze Debug x86
@@ -100,7 +100,7 @@ native-analyze-all:
   just native-analyze Release x64
 
 native-asan configuration="Debug" platform="x86":
-  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; $outDir = Join-Path $PWD 'asan\{{platform}}\{{configuration}}'; $intDir = Join-Path $PWD 'asan\obj\{{platform}}\{{configuration}}'; New-Item -ItemType Directory -Force $outDir, $intDir | Out-Null; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform={{platform}} /p:EnableASAN=true "/p:OutDir=$outDir\" "/p:IntDir=$intDir\" /m:1
+  $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'; if (Test-Path (Join-Path $nasmDir 'nasm.exe')) { $env:Path = "$nasmDir;$env:Path" }; $msbuild = if ($env:MSBUILD) { $env:MSBUILD } elseif (Test-Path 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe') { 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' } else { 'MSBuild.exe' }; $extra = @(); if ($env:GARGOYLE_PLATFORM_TOOLSET) { $extra += "/p:PlatformToolset=$env:GARGOYLE_PLATFORM_TOOLSET" }; $outDir = Join-Path $PWD 'asan\{{platform}}\{{configuration}}'; $intDir = Join-Path $PWD 'asan\obj\{{platform}}\{{configuration}}'; New-Item -ItemType Directory -Force $outDir, $intDir | Out-Null; & $msbuild Gargoyle.sln /p:Configuration={{configuration}} /p:Platform={{platform}} /p:EnableASAN=true $extra "/p:OutDir=$outDir\" "/p:IntDir=$intDir\" /m:1
 
 native-asan-all:
   just native-asan Debug x86
