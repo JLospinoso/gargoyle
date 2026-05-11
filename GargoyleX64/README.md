@@ -48,7 +48,7 @@ example instead uses two PIC blobs:
 The setup PIC creates a waitable timer, registers the callback entry inside the
 re-entry PIC, displays the benign MessageBox payload, and then calls the re-entry
 PIC's wait entry. The wait entry marks `setup_x64.pic` `PAGE_READONLY` and enters
-`WaitForSingleObjectEx(..., TRUE)`. Timer re-entry restores
+an alertable `SleepEx(INFINITE, TRUE)` wait. Timer re-entry restores
 `setup_x64.pic` to `PAGE_EXECUTE_READ`, returns to the setup loop, and displays
 the benign payload again.
 

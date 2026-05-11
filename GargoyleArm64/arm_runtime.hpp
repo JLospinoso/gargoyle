@@ -55,7 +55,7 @@ namespace gargoyle_arm {
     void* reentry_wait;
     void* reentry_callback;
     void* VirtualProtectEx;
-    void* WaitForSingleObjectEx;
+    void* SleepEx;
     void* CreateWaitableTimerW;
     void* SetWaitableTimer;
     void* MessageBoxA;
@@ -76,7 +76,7 @@ namespace gargoyle_arm {
   static_assert(offsetof(ArmConfiguration, reentry_wait) == 0x18);
   static_assert(offsetof(ArmConfiguration, reentry_callback) == 0x20);
   static_assert(offsetof(ArmConfiguration, VirtualProtectEx) == 0x28);
-  static_assert(offsetof(ArmConfiguration, WaitForSingleObjectEx) == 0x30);
+  static_assert(offsetof(ArmConfiguration, SleepEx) == 0x30);
   static_assert(offsetof(ArmConfiguration, CreateWaitableTimerW) == 0x38);
   static_assert(offsetof(ArmConfiguration, SetWaitableTimer) == 0x40);
   static_assert(offsetof(ArmConfiguration, MessageBoxA) == 0x48);
@@ -381,7 +381,7 @@ namespace gargoyle_arm {
     printf("    %s APC callback @ ------> 0x%p\n", traits.display_name, config.reentry_callback);
     printf("    Configuration @ ----------> 0x%p\n", &config);
     printf("    VirtualProtectEx @ -------> 0x%p\n", config.VirtualProtectEx);
-    printf("    WaitForSingleObjectEx @ --> 0x%p\n", config.WaitForSingleObjectEx);
+    printf("    SleepEx @ -------------> 0x%p\n", config.SleepEx);
     printf("    CreateWaitableTimerW @ ---> 0x%p\n", config.CreateWaitableTimerW);
     printf("    SetWaitableTimer @ -------> 0x%p\n", config.SetWaitableTimer);
     printf("    MessageBoxA @ ------------> 0x%p\n", config.MessageBoxA);
@@ -416,7 +416,7 @@ namespace gargoyle_arm {
     config.reentry_wait = reentry_memory;
     config.reentry_callback = reentry_callback;
     config.VirtualProtectEx = resolve_export(L"kernel32.dll", "VirtualProtectEx");
-    config.WaitForSingleObjectEx = resolve_export(L"kernel32.dll", "WaitForSingleObjectEx");
+    config.SleepEx = resolve_export(L"kernel32.dll", "SleepEx");
     config.CreateWaitableTimerW = resolve_export(L"kernel32.dll", "CreateWaitableTimerW");
     config.SetWaitableTimer = resolve_export(L"kernel32.dll", "SetWaitableTimer");
     config.MessageBoxA = resolve_export(L"user32.dll", "MessageBoxA");

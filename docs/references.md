@@ -107,6 +107,10 @@ Access dates below use 2026-05-08.
   routines only run when the relevant thread enters an alertable state. Accessed
   2026-05-08.
 
+- [SleepEx](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleepex)
+  documents alertable sleeps that can complete when an APC is queued to the
+  sleeping thread. Accessed 2026-05-11.
+
 - [Using Waitable Timers with an Asynchronous Procedure Call](https://learn.microsoft.com/en-us/windows/win32/sync/using-a-waitable-timer-with-an-asynchronous-procedure-call)
   is Microsoft's conceptual example for waitable timers with APC completion
   routines. Accessed 2026-05-08.

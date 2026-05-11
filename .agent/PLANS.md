@@ -17,6 +17,189 @@ without reading the full chat.
 
 ## Active Plans
 
+### Plan: Timer APC Re-Entry Semantics Fix
+
+#### Objective
+
+Fix the timer/APC proof so the demos prove APC completion-routine execution rather than
+only proving that a waitable timer object became signaled.
+
+Definition of done:
+
+- x86, x64, ARM64, and ARM64EC no longer use the timer handle itself as the alertable wait
+  object for APC re-entry.
+- x86 and x64 local live validation proves actual APC re-entry, not merely a second
+  MessageBox caused by a signaled timer wait.
+- ARM64 and ARM64EC hosted `windows-11-arm` headless checks complete two benign rounds and
+  report at least one callback/re-entry event.
+- Docs explain the discovered weakness and the corrected wait semantics.
+- PR #23 is updated and stops short of merge.
+
+#### User Decisions And Assumptions
+
+User decisions:
+
+- 2026-05-11: User asked to plan a fix after analysis showed the POC was relying on timer
+  signaled-state wakeups rather than proving APC callback execution.
+- 2026-05-11: User prefers improving x86/x64 locally first, then validating ARM through
+  hosted Windows-on-Arm CI.
+
+Assumptions:
+
+- `SleepEx(INFINITE, TRUE)` or an equivalent alertable wait with no timer-handle object is
+  the right primitive for the APC proof path because it returns for APC delivery rather than
+  for the timer object becoming signaled.
+- The x86/x64 behavior change should remain a benign MessageBox proof of concept and should
+  not broaden into payload, persistence, or operational misuse features.
+- ARM64EC v1 should continue to prove build/run identity and APC semantics, not mixed x64 DLL
+  interop.
+
+#### Context And Evidence
+
+- GitHub Actions run `25645191500`, job `75272673545`, passed all builds and architecture
+  probes, then failed `arm64 --mode headless`.
+- Failure evidence: ARM64 completed `2/2` headless rounds with `0` timer/APC callbacks.
+- Local API probe showed `WaitForSingleObjectEx(timer, alertable)` returned `WAIT_OBJECT_0`
+  with `callbacks=0`, while `SleepEx(alertable)` subsequently returned `WAIT_IO_COMPLETION`
+  with `callbacks=1`.
+- Microsoft's waitable-timer APC documentation warns not to wait on the timer handle when
+  using a completion routine because the thread can wake from the timer becoming signaled
+  instead of from APC delivery.
+- Before the fix, `GargoyleArm64/reentry_arm64.asm`,
+  `GargoyleArm64EC/reentry_arm64ec.asm`, and `GargoyleX64/reentry_x64.nasm` all called
+  `WaitForSingleObjectEx(timer, INFINITE, TRUE)`.
+- Before the fix, `setup.nasm` built a Win32 tail-call chain around
+  `WaitForSingleObjectEx` using the timer handle, so x86 was subject to the same semantic
+  weakness.
+
+#### Scope
+
+In scope:
+
+- Replace timer-handle alertable waits with APC-specific alertable waits in x86, x64, ARM64,
+  and ARM64EC.
+- Add callback/re-entry counters or equally clear control-flow evidence for x86/x64, matching
+  the stricter ARM evidence.
+- Extend acceptance parsing/tests so local validation catches the old false-positive shape.
+- Update docs and PR notes with the discovery and corrected semantics.
+- Use hosted ARM CI to validate ARM64 and ARM64EC runtime behavior.
+
+Out of scope:
+
+- ARM32.
+- ARM64EC mixed x64 DLL interop.
+- Non-benign payloads, persistence, credential access, or generalized offensive framework
+  behavior.
+- Merging PR #23.
+
+#### Interfaces And Data Flow
+
+- Native configuration blocks should carry `SleepEx` or an equivalent alertable-wait API
+  address where PIC previously consumed `WaitForSingleObjectEx` for timer waits.
+- The setup PIC arms the waitable timer with the existing completion routine and completion
+  argument, then enters an alertable wait that can only satisfy the APC proof through APC
+  delivery.
+- The ARM callback/re-entry path increments an observable counter before restoring execute
+  permissions. The x86/x64 live paths prove the same semantics by entering `SleepEx` rather
+  than waiting on the timer handle, so the second MessageBox can no longer be produced by
+  timer-object signaled-state progress.
+- `--mode headless` should remain non-GUI and parse counter evidence from stdout.
+- `--mode live` should still show benign MessageBoxes, but validation should distinguish
+  initial handoff from APC-backed re-entry.
+
+#### Task Graph
+
+| ID | Task | Depends On | Owner | Files/Area | Validation |
+| --- | --- | --- | --- | --- | --- |
+| T1 | Add diagnostic evidence shape | none | main | `main.cpp`, `GargoyleX64/`, `GargoyleArm64/`, harness parsers | unit tests |
+| T2 | Fix x64 wait semantics | T1 | main | `GargoyleX64/main_x64.cpp`, `setup_x64.nasm`, `reentry_x64.nasm` | x64 live acceptance |
+| T3 | Fix x86 wait semantics | T1 | main | `main.cpp`, `setup.nasm`, optional gadget/trampoline layout | x86 live acceptance |
+| T4 | Fix ARM wait semantics | T1-T2 | main | `GargoyleArm64/`, `GargoyleArm64EC/` | hosted ARM smoke |
+| T5 | Update docs/tests/CI expectations | T1-T4 | main | `src/`, `tests/`, `docs/`, README, PR body | `just check`, `just ci` |
+
+#### Implementation Steps
+
+1. Add a minimal local repro test or native diagnostic expectation that demonstrates
+   `SleepEx`/alertable APC delivery returns `WAIT_IO_COMPLETION`, while waiting on the timer
+   handle can return `WAIT_OBJECT_0`.
+2. Update x64 first because its separate re-entry PIC is the simplest path: replace the
+   timer-handle wait with `SleepEx(INFINITE, TRUE)`, making the second live MessageBox
+   dependent on APC delivery rather than the timer object's signaled state.
+3. Update x86 carefully: preserve the stack-pivot/trampoline shape while replacing the
+   timer-handle wait chain with an alertable APC wait and adding observable re-entry evidence.
+4. Once local x86/x64 live checks prove true APC re-entry, apply the same wait primitive and
+   counter expectations to ARM64/ARM64EC.
+5. Push to PR #23, monitor `windows-11-arm`, and inspect logs. Stop after three new CI-fix
+   iterations or if ARM64EC ABI/call-check behavior requires a design choice.
+6. Update architecture docs to call out the false-positive weakness and the corrected proof.
+
+#### Validation
+
+Targeted checks:
+
+- `just check`
+- `just build-debug`
+- `just build-x64-debug`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x86`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x86 --mode architecture --skip-build`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64 --mode architecture --skip-build`
+
+Canonical gate:
+
+- `just ci`
+
+Hosted gate:
+
+- PR #23 `Windows 11 ARM smoke`, especially ARM64 and ARM64EC headless modes.
+
+Manual or live checks:
+
+- Confirm the second visible MessageBox is tied to the `SleepEx` APC re-entry path rather
+  than timer signaled-state progress.
+
+#### Risks And Stop Conditions
+
+- Stop if the x86 stack-pivot/trampoline change requires a broader redesign than swapping the
+  alertable wait primitive.
+- Stop if ARM64EC raw PIC execution trips ARM64EC call-checking or thunking requirements that
+  need a design decision.
+- Stop after three new hosted ARM CI-fix iterations.
+- Stop if a proposed fix would broaden the project beyond benign local proof-of-concept
+  behavior.
+
+#### Artifact Index
+
+- PR #23: `https://github.com/JLospinoso/gargoyle/pull/23`
+- Failing ARM run: `https://github.com/JLospinoso/gargoyle/actions/runs/25645191500`
+- Microsoft waitable timer APC reference:
+  `https://learn.microsoft.com/en-us/windows/win32/sync/using-a-waitable-timer-with-an-asynchronous-procedure-call`
+
+#### Progress Log
+
+- 2026-05-11: Root cause identified: timer-handle waits can return from signaled timer state
+  before the APC completion routine runs.
+- 2026-05-11: Plan recorded before implementation.
+- 2026-05-11: Implemented `SleepEx(INFINITE, TRUE)` re-entry waits for x86, x64, ARM64, and
+  ARM64EC. Updated harness expectations, docs, and setup evidence labels.
+- 2026-05-11: Local validation passed: `just check`, x86 Debug/Release live acceptance, x64
+  Debug/Release live acceptance, and `just ci`.
+
+#### Handoff Packet
+
+- Branch: `codex/arm64-arm64ec-parity`
+- PR/issue: PR #23, issue #22
+- Current status: implementation complete locally; hosted ARM CI validation remains
+- Completed: failure analysis, fix plan, x86/x64/ARM64/ARM64EC wait semantic fix, harness and
+  docs updates
+- Remaining: push PR #23 update and monitor hosted ARM smoke
+- Validation run: local API probe; `just check`; x86 Debug/Release live acceptance; x64
+  Debug/Release live acceptance; `just ci`
+- Failed/skipped checks: local ARM build remains unavailable because this workstation lacks
+  ARM64/ARM64EC Visual Studio tools; PR #23 hosted ARM smoke must validate ARM runtime
+- Residual risks: ARM64EC ABI/call-checking may need extra design care if hosted CI exposes
+  a runtime-specific failure
+
 ### Plan: Issue #22 ARM64/ARM64EC Parity And Windows-On-Arm CI Smoke
 
 #### Objective

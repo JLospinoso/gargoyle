@@ -32,7 +32,7 @@ from gargoyle_acceptance.pe import PEMachine, validate_pe_machine
 from gargoyle_acceptance.windows import MessageBoxController
 
 EXPECTED_MARKERS = (
-    "[+] Allocated 149 bytes for PIC.",
+    "[+] Allocated 141 bytes for PIC.",
     "[+] ROP gadget configured.",
     "[+] Stack trampoline built.",
     "[+] Configuration built.",
@@ -56,7 +56,7 @@ X64_ADDRESS_LABELS = (
     "x64 APC callback",
     "Configuration",
     "VirtualProtectEx",
-    "WaitForSingleObjectEx",
+    "SleepEx",
     "CreateWaitableTimerW",
     "SetWaitableTimer",
     "MessageBoxA",
@@ -71,7 +71,7 @@ ARM64_ADDRESS_LABELS = (
     "ARM64 APC callback",
     "Configuration",
     "VirtualProtectEx",
-    "WaitForSingleObjectEx",
+    "SleepEx",
     "CreateWaitableTimerW",
     "SetWaitableTimer",
     "MessageBoxA",
@@ -86,7 +86,7 @@ ARM64EC_ADDRESS_LABELS = (
     "ARM64EC APC callback",
     "Configuration",
     "VirtualProtectEx",
-    "WaitForSingleObjectEx",
+    "SleepEx",
     "CreateWaitableTimerW",
     "SetWaitableTimer",
     "MessageBoxA",

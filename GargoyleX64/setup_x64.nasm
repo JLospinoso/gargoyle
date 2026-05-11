@@ -8,11 +8,11 @@ STRUC X64Configuration
 .reentry_wait: RESQ 1
 .reentry_callback: RESQ 1
 .VirtualProtectEx: RESQ 1
-.WaitForSingleObjectEx: RESQ 1
+.SleepEx: RESQ 1
 .CreateWaitableTimerW: RESQ 1
 .SetWaitableTimer: RESQ 1
 .MessageBoxA: RESQ 1
-.sleep_handle: RESQ 1
+.timer_handle: RESQ 1
 .due_time: RESQ 1
 .interval: RESD 1
 .old_protection: RESD 1
@@ -33,7 +33,7 @@ ENDSTRUC
 	xor edx, edx
 	xor r8d, r8d
 	call [rbx + X64Configuration.CreateWaitableTimerW]
-	mov [rbx + X64Configuration.sleep_handle], rax
+	mov [rbx + X64Configuration.timer_handle], rax
 
 	; SetWaitableTimer(timer, &due_time, interval, reentry_callback, config, FALSE)
 	mov rcx, rax

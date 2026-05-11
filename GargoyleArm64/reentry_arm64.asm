@@ -5,8 +5,7 @@
 ArmConfiguration_setup_address        EQU 0x08
 ArmConfiguration_setup_length         EQU 0x10
 ArmConfiguration_VirtualProtectEx     EQU 0x28
-ArmConfiguration_WaitForSingleObjectEx EQU 0x30
-ArmConfiguration_sleep_handle         EQU 0x50
+ArmConfiguration_SleepEx               EQU 0x30
 ArmConfiguration_old_protection       EQU 0x64
 ArmConfiguration_callback_rounds      EQU 0x74
 
@@ -41,11 +40,10 @@ wait_body
         ldr     x8, [x19, #ArmConfiguration_VirtualProtectEx]
         blr     x8
 
-        ; WaitForSingleObjectEx(timer, INFINITE, TRUE)
-        ldr     x0, [x19, #ArmConfiguration_sleep_handle]
-        mvn     w1, wzr
-        mov     w2, #1
-        ldr     x8, [x19, #ArmConfiguration_WaitForSingleObjectEx]
+        ; SleepEx(INFINITE, TRUE)
+        mvn     w0, wzr
+        mov     w1, #1
+        ldr     x8, [x19, #ArmConfiguration_SleepEx]
         blr     x8
 
         ; Returning to setup_arm64.pic is safe only after execute permission is restored.

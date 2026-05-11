@@ -5,7 +5,7 @@ STRUC Configuration
 .setup_addr: RESD 1
 .setup_length: RESD 1
 .VirtualProtectEx: RESD 1
-.WaitForSingleObjectEx: RESD 1
+.SleepEx: RESD 1
 .CreateWaitableTimer: RESD 1
 .SetWaitableTimer: RESD 1
 .MessageBox: RESD 1
@@ -83,20 +83,16 @@ reset_trampoline:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;; Time to setup tail calls to go down
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Setup arguments for WaitForSingleObjectEx x1
+	; Setup arguments for SleepEx x1
 	push 1
 	push 0xFFFFFFFF
-	mov ecx, [ebx + Configuration.sleep_handle]
-	push ecx
 	push 0 ; Return address never ret'd
 
-	; Setup arguments for WaitForSingleObjectEx x2
+	; Setup arguments for SleepEx x2
 	push 1
 	push 0xFFFFFFFF
-	mov ecx, [ebx + Configuration.sleep_handle]
-	push ecx
-	; Tail call to WaitForSingleObjectEx
-	mov ecx, [ebx + Configuration.WaitForSingleObjectEx]
+	; Tail call to SleepEx
+	mov ecx, [ebx + Configuration.SleepEx]
 	push ecx
 	
 	; Setup arguments for VirtualProtectEx
@@ -108,8 +104,8 @@ reset_trampoline:
 	mov ecx, [ebx + Configuration.setup_addr]
 	push ecx
 	push dword 0xffffffff
-	; Tail call to WaitForSingleObjectEx
-	mov ecx, [ebx + Configuration.WaitForSingleObjectEx]
+	; Tail call to SleepEx
+	mov ecx, [ebx + Configuration.SleepEx]
 	push ecx
 
 	; Jump to VirtualProtectEx

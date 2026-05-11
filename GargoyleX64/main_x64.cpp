@@ -29,11 +29,11 @@ namespace {
     void* reentry_wait;
     void* reentry_callback;
     void* VirtualProtectEx;
-    void* WaitForSingleObjectEx;
+    void* SleepEx;
     void* CreateWaitableTimerW;
     void* SetWaitableTimer;
     void* MessageBoxA;
-    void* sleep_handle;
+    void* timer_handle;
     int64_t due_time;
     uint32_t interval;
     uint32_t old_protection;
@@ -46,11 +46,11 @@ namespace {
   static_assert(offsetof(X64Configuration, reentry_wait) == 0x18);
   static_assert(offsetof(X64Configuration, reentry_callback) == 0x20);
   static_assert(offsetof(X64Configuration, VirtualProtectEx) == 0x28);
-  static_assert(offsetof(X64Configuration, WaitForSingleObjectEx) == 0x30);
+  static_assert(offsetof(X64Configuration, SleepEx) == 0x30);
   static_assert(offsetof(X64Configuration, CreateWaitableTimerW) == 0x38);
   static_assert(offsetof(X64Configuration, SetWaitableTimer) == 0x40);
   static_assert(offsetof(X64Configuration, MessageBoxA) == 0x48);
-  static_assert(offsetof(X64Configuration, sleep_handle) == 0x50);
+  static_assert(offsetof(X64Configuration, timer_handle) == 0x50);
   static_assert(offsetof(X64Configuration, due_time) == 0x58);
   static_assert(offsetof(X64Configuration, interval) == 0x60);
   static_assert(offsetof(X64Configuration, old_protection) == 0x64);
@@ -216,7 +216,7 @@ void launch(const string& setup_pic_path) {
   config.reentry_wait = reentry_memory;
   config.reentry_callback = reentry_callback;
   config.VirtualProtectEx = resolve_export(L"kernel32.dll", "VirtualProtectEx");
-  config.WaitForSingleObjectEx = resolve_export(L"kernel32.dll", "WaitForSingleObjectEx");
+  config.SleepEx = resolve_export(L"kernel32.dll", "SleepEx");
   config.CreateWaitableTimerW = resolve_export(L"kernel32.dll", "CreateWaitableTimerW");
   config.SetWaitableTimer = resolve_export(L"kernel32.dll", "SetWaitableTimer");
   config.MessageBoxA = resolve_export(L"user32.dll", "MessageBoxA");
@@ -230,7 +230,7 @@ void launch(const string& setup_pic_path) {
   printf("    x64 APC callback @ ---> 0x%p\n", reentry_callback);
   printf("    Configuration @ -------> 0x%p\n", &config);
   printf("    VirtualProtectEx @ ----> 0x%p\n", config.VirtualProtectEx);
-  printf("    WaitForSingleObjectEx @ 0x%p\n", config.WaitForSingleObjectEx);
+  printf("    SleepEx @ ------------> 0x%p\n", config.SleepEx);
   printf("    CreateWaitableTimerW @  0x%p\n", config.CreateWaitableTimerW);
   printf("    SetWaitableTimer @ ---> 0x%p\n", config.SetWaitableTimer);
   printf("    MessageBoxA @ --------> 0x%p\n", config.MessageBoxA);

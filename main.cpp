@@ -38,7 +38,7 @@ namespace {
     void* setup_address;
     uint32_t setup_length;
     void* VirtualProtectEx;
-    void* WaitForSingleObjectEx;
+    void* SleepEx;
     void* CreateWaitableTimer;
     void* SetWaitableTimer;
     void* MessageBox;
@@ -343,7 +343,7 @@ void launch(const string& setup_pic_path, const string& gadget_system_dll_filena
   config.setup_address = setup_memory;
   config.setup_length = static_cast<uint32_t>(setup_size);
   config.VirtualProtectEx = VirtualProtectEx;
-  config.WaitForSingleObjectEx = WaitForSingleObjectEx;
+  config.SleepEx = SleepEx;
   config.CreateWaitableTimer = CreateWaitableTimerW;
   config.SetWaitableTimer = SetWaitableTimer;
   config.MessageBox = MessageBoxA;
@@ -356,8 +356,8 @@ void launch(const string& setup_pic_path, const string& gadget_system_dll_filena
   printf("[ ] APC setup: callback gadget=0x%p, callback argument trampoline=0x%p.\n",
     config.target,
     config.tramp_addr);
-  printf("[ ] Alertable wait: WaitForSingleObjectEx=0x%p, timer period=%lu ms.\n",
-    config.WaitForSingleObjectEx,
+  printf("[ ] Alertable wait: SleepEx=0x%p, timer period=%lu ms.\n",
+    config.SleepEx,
     invocation_interval_ms);
   printf("[ ] PIC protection cycle: %s -> %s while waiting -> %s on APC re-entry.\n",
     page_protection_name(PAGE_EXECUTE_READ),

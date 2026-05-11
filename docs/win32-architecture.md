@@ -34,12 +34,15 @@ offset rather than by symbol names.
    creates a waitable timer, and registers the gadget as the APC completion
    callback. The callback argument points at the trampoline frame.
 4. Before waiting, the setup PIC tail-calls `VirtualProtectEx` to mark the PIC
-   region `PAGE_READONLY`, then enters an alertable wait through
-   `WaitForSingleObjectEx`.
+   region `PAGE_READONLY`, then enters an alertable `SleepEx(INFINITE, TRUE)`
+   wait. It deliberately does not wait on the timer handle because that can wake
+   from the timer object's signaled state before the APC callback runs.
 5. On timer delivery, the APC callback enters the gadget. The gadget pivots the
    stack to the trampoline frame, which restores the PIC to `PAGE_EXECUTE_READ`
    and returns to `setup.pic`.
-6. The benign MessageBox payload runs again, and the cycle repeats.
+6. The benign MessageBox payload runs again, and the cycle repeats. With the
+   corrected alertable sleep, the second window is evidence of APC re-entry
+   rather than only timer-object progress.
 
 The console banner logs the selected gadget source, timer/APC setup, stack-pivot
 target, and protection cycle so a failing run can be diagnosed from stdout before

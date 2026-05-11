@@ -8,11 +8,11 @@ STRUC X64Configuration
 .reentry_wait: RESQ 1
 .reentry_callback: RESQ 1
 .VirtualProtectEx: RESQ 1
-.WaitForSingleObjectEx: RESQ 1
+.SleepEx: RESQ 1
 .CreateWaitableTimerW: RESQ 1
 .SetWaitableTimer: RESQ 1
 .MessageBoxA: RESQ 1
-.sleep_handle: RESQ 1
+.timer_handle: RESQ 1
 .due_time: RESQ 1
 .interval: RESD 1
 .old_protection: RESD 1
@@ -43,11 +43,10 @@ wait_body:
 	mov [rsp + 32], rax
 	call [rbx + X64Configuration.VirtualProtectEx]
 
-	; WaitForSingleObjectEx(timer, INFINITE, TRUE)
-	mov rcx, [rbx + X64Configuration.sleep_handle]
-	mov edx, 0xFFFFFFFF
-	mov r8d, 1
-	call [rbx + X64Configuration.WaitForSingleObjectEx]
+	; SleepEx(INFINITE, TRUE)
+	mov ecx, 0xFFFFFFFF
+	mov edx, 1
+	call [rbx + X64Configuration.SleepEx]
 
 	; Returning to setup_x64.pic is only safe after its page is executable again.
 	; This is idempotent when the APC callback already restored PAGE_EXECUTE_READ.

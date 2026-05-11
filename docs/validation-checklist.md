@@ -116,8 +116,9 @@ Expected automated evidence:
 - Watch for `VirtualProtectEx` calls that make the setup PIC executable before
   payload execution and non-executable afterward.
 
-- Watch for `SetWaitableTimer` and alertable `WaitForSingleObjectEx` behavior
-  that explains why the timer completion routine runs on re-entry.
+- Watch for `SetWaitableTimer` followed by alertable `SleepEx` behavior. The
+  demo should not wait on the timer handle itself for APC proof, because that
+  can wake from the timer object's signaled state before the APC callback runs.
 
 - Compare the fallback `gadget.pic` path with the system-DLL gadget path when
   `mshtml.dll` is absent or lacks a compatible pivot sequence.

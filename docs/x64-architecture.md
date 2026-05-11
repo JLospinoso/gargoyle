@@ -30,15 +30,14 @@ period, and saved protection value.
 4. After the MessageBox closes, `setup_x64.pic` calls the wait entry in
    `reentry_x64.pic`.
 5. The wait entry marks `setup_x64.pic` `PAGE_READONLY` and enters an alertable
-   `WaitForSingleObjectEx`.
-6. Timer re-entry restores `setup_x64.pic` to `PAGE_EXECUTE_READ` through the
-   re-entry PIC, then control returns to the setup loop and the benign payload
-   appears again.
+   `SleepEx(INFINITE, TRUE)` wait. It avoids waiting on the timer handle itself
+   so the timer object's signaled state cannot masquerade as APC re-entry.
+6. Timer APC re-entry restores `setup_x64.pic` to `PAGE_EXECUTE_READ` through
+   the re-entry PIC, then control returns to the setup loop and the benign
+   payload appears again.
 
 The wait path also reapplies `PAGE_EXECUTE_READ` before returning to the setup
-PIC. That restore is idempotent when the APC callback has already run, and it
-keeps unexpected waitable-timer return modes from jumping back into a read-only
-setup page.
+PIC. That restore is idempotent when the APC callback has already run.
 
 ## Validation Notes
 
