@@ -116,6 +116,7 @@ Every 15 seconds, gargoyle will pop up a message box. When you click ok, gargoyl
 
 The refreshed documentation includes:
 
+* `docs/refresh-2026.md` for a pre-retrospective summary of the refresh, architecture claims, corrected APC evidence, and non-goals.
 * `docs/acceptance.md` for the Python acceptance harness.
 * `docs/validation-checklist.md` for automated and manual runtime checks.
 * `docs/win32-architecture.md` for the current Win32 configuration, stack, timer/APC, gadget, and protection-cycle layout.

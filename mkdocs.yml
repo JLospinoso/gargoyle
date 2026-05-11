@@ -33,6 +33,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - 2026 Refresh: refresh-2026.md
   - Acceptance Harness: acceptance.md
   - Validation Checklist: validation-checklist.md
   - Win32 Architecture: win32-architecture.md

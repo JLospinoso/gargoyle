@@ -273,3 +273,6 @@ site/
 dist/
 asan/
 
+# Private planning and research notes
+.private-docs/
+

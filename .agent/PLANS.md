@@ -17,6 +17,87 @@ without reading the full chat.
 
 ## Active Plans
 
+### Plan: Issue #24 Pre-Blog Gargoyle Refresh Readiness
+
+#### Objective
+
+Prepare a small documentation-focused PR that makes the 2026 Gargoyle refresh easy to cite
+before drafting a retrospective blog post.
+
+Definition of done:
+
+- GitHub issue #24 tracks the pre-blog readiness work.
+- Branch `codex/blog-refresh-readiness` contains only scoped documentation, planning, and
+  private-ignore changes.
+- Public docs include a `2026 Refresh` page summarizing the refresh arc, architecture claims,
+  the `SleepEx` APC semantics fix, validation evidence, and explicit non-goals.
+- `mkdocs.yml`, `docs/index.md`, and `README.md` link the new page.
+- `.private-docs/` remains ignored, with private evidence notes updated outside the commit.
+- PR opens against `master`, stops short of merge, and has passing local validation and CI.
+
+#### User Decisions And Assumptions
+
+User decisions:
+
+- 2026-05-11: User asked to implement the approved pre-blog readiness plan with an issue,
+  branch, and PR.
+
+Assumptions:
+
+- This is a documentation-readiness pass, not a new native runtime feature.
+- The PR should not add detector tooling, gadget search, PE wrapping, injection tooling, or
+  payload mechanics.
+- The tone should stay historical, reflective, benign, and defender-aware.
+
+#### Scope
+
+In scope:
+
+- `docs/refresh-2026.md`, docs navigation, README documentation list, `.gitignore`, and this
+  plan file.
+- Ignored private evidence notes under `.private-docs/gargoyle-research/`.
+- GitHub issue, branch, commit, PR, and CI shepherding.
+
+Out of scope:
+
+- Native behavior changes.
+- Offensive tooling expansion.
+- Merging the PR.
+
+#### Validation
+
+Planned local checks:
+
+- `just docs` passed on 2026-05-11.
+- `just check` passed on 2026-05-11.
+
+GitHub checks:
+
+- PR run `25699863387` passed `Windows build and Python checks` and
+  `Windows 11 ARM smoke` on 2026-05-11.
+
+#### Artifact Index
+
+- Issue #24: `https://github.com/JLospinoso/gargoyle/issues/24`
+- Branch: `codex/blog-refresh-readiness`
+- PR #25: `https://github.com/JLospinoso/gargoyle/pull/25`
+
+#### Progress Log
+
+- 2026-05-11: Issue #24 created and branch `codex/blog-refresh-readiness` created.
+- 2026-05-11: Started docs implementation.
+- 2026-05-11: Added `docs/refresh-2026.md`, linked it from MkDocs, README, and docs
+  index, and confirmed `.private-docs/` ignores the private evidence log.
+- 2026-05-11: Local validation passed with `just docs` and `just check`.
+- 2026-05-11: Commit `28655c2` pushed and PR #25 opened against `master`.
+- 2026-05-11: Amended branch to commit `2f911b0` with PR metadata; PR run
+  `25699863387` passed both required checks.
+
+#### Handoff Packet
+
+- Current status: PR #25 is open, validated, and ready for review/merge.
+- Remaining: none for this plan unless the PR receives review feedback.
+
 ### Plan: Timer APC Re-Entry Semantics Fix
 
 #### Objective

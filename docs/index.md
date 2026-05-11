@@ -4,7 +4,9 @@ Gargoyle is a small Windows proof of concept for memory-scanner evasion.
 
 The 2026 refresh keeps the original Win32 artifact intact while adding modern
 build tooling, acceptance validation, documentation, and a sibling x64
-timer/APC example.
+timer/APC example. Start with [2026 Refresh](refresh-2026.md) for the
+pre-retrospective summary of what changed, what each architecture proves, and
+what the repository intentionally does not claim.
 
 ## Developer Commands
 
