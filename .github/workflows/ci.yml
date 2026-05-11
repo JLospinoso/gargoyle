@@ -42,10 +42,21 @@ jobs:
             winget install --id NASM.NASM --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
           }
 
-          $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'
-          if (Test-Path (Join-Path $nasmDir 'nasm.exe')) {
-            Add-Content -Path $env:GITHUB_PATH -Value $nasmDir
+          $nasmCandidates = @(
+            (Join-Path $env:LOCALAPPDATA 'bin\NASM\nasm.exe'),
+            'C:\Program Files\NASM\nasm.exe',
+            'C:\Program Files (x86)\NASM\nasm.exe',
+            'C:\ProgramData\chocolatey\bin\nasm.exe'
+          )
+          $resolvedNasm = Get-Command nasm.exe -ErrorAction SilentlyContinue
+          if ($resolvedNasm) {
+            $nasmCandidates += $resolvedNasm.Source
           }
+          $nasmExe = $nasmCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $nasmExe) {
+            throw "NASM install completed, but nasm.exe was not found."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path -Parent $nasmExe)
 
       - name: Run CI
         run: just ci
@@ -89,10 +100,21 @@ jobs:
             }
           }
 
-          $nasmDir = Join-Path $env:LOCALAPPDATA 'bin\NASM'
-          if (Test-Path (Join-Path $nasmDir 'nasm.exe')) {
-            Add-Content -Path $env:GITHUB_PATH -Value $nasmDir
+          $nasmCandidates = @(
+            (Join-Path $env:LOCALAPPDATA 'bin\NASM\nasm.exe'),
+            'C:\Program Files\NASM\nasm.exe',
+            'C:\Program Files (x86)\NASM\nasm.exe',
+            'C:\ProgramData\chocolatey\bin\nasm.exe'
+          )
+          $resolvedNasm = Get-Command nasm.exe -ErrorAction SilentlyContinue
+          if ($resolvedNasm) {
+            $nasmCandidates += $resolvedNasm.Source
           }
+          $nasmExe = $nasmCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $nasmExe) {
+            throw "NASM install completed, but nasm.exe was not found."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path -Parent $nasmExe)
 
       - name: Run ARM artifact smoke
         env:
