@@ -202,24 +202,27 @@ Manual or live checks:
   inside that reservation.
 - 2026-05-11: Local validation after reserve-then-commit allocation passed: `just check` and
   `just ci`.
+- 2026-05-11: Hosted run `25695045729` passed both `Windows build and Python checks` and
+  `Windows 11 ARM smoke`. ARM64 and ARM64EC headless checks completed the requested benign
+  timer/APC rounds.
 
 #### Handoff Packet
 
 - Branch: `codex/arm64-arm64ec-parity`
 - PR/issue: PR #23, issue #22
-- Current status: third and final hosted ARM failure fix implemented and validated locally;
-  hosted ARM CI validation remains
+- Current status: complete; PR #23 is updated, validated, and ready for review/merge, but not
+  merged
 - Completed: failure analysis, fix plan, x86/x64/ARM64/ARM64EC wait semantic fix, harness and
   docs updates
-- Remaining: push PR #23 update and monitor hosted ARM smoke
+- Remaining: none for this plan
 - Validation run: local API probe; `just check`; x86 Debug/Release live acceptance; x64
   Debug/Release live acceptance; `just ci`; ARM64EC fix `just check`, `just ci`, and
   `just docs`; dynamic `VirtualAlloc2` resolution fix `just check` and `just ci`;
   reserve-then-commit allocation fix `just check` and `just ci`
 - Failed/skipped checks: local ARM build remains unavailable because this workstation lacks
-  ARM64/ARM64EC Visual Studio tools; PR #23 hosted ARM smoke must validate ARM runtime
-- Residual risks: ARM64EC callback delivery from EC-marked dynamic PIC still needs hosted
-  confirmation; stop and hand off if the next hosted ARM smoke fails
+  ARM64/ARM64EC Visual Studio tools; PR #23 hosted ARM smoke validated ARM runtime instead
+- Residual risks: ARM64EC v1 still proves build/run/binary identity and APC semantics, not
+  mixed x64 DLL interop
 
 ### Plan: Issue #22 ARM64/ARM64EC Parity And Windows-On-Arm CI Smoke
 
