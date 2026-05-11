@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from os import environ, pathsep
 from pathlib import Path
 
-from gargoyle_acceptance.environment import Configuration, Platform, Toolchain
+from gargoyle_acceptance.environment import Configuration, Platform, Toolchain, msbuild_platform
 from gargoyle_acceptance.errors import AcceptanceError
 
 
@@ -51,7 +51,8 @@ def build_solution(
         str(toolchain.msbuild),
         "Gargoyle.sln",
         f"/p:Configuration={configuration}",
-        f"/p:Platform={platform}",
+        f"/p:Platform={msbuild_platform(platform)}",
+        *_extra_msbuild_properties(),
         "/m",
     )
     try:
@@ -97,6 +98,18 @@ def _build_environment(toolchain: Toolchain) -> dict[str, str]:
     nasm_dir = str(toolchain.nasm.parent)
     env["PATH"] = nasm_dir + pathsep + path if path else nasm_dir
     return env
+
+
+def _extra_msbuild_properties() -> tuple[str, ...]:
+    """Return optional MSBuild properties supplied through the environment.
+
+    Returns:
+        Additional `/p:` arguments for MSBuild.
+    """
+    toolset = environ.get("GARGOYLE_PLATFORM_TOOLSET")
+    if not toolset:
+        return ()
+    return (f"/p:PlatformToolset={toolset}",)
 
 
 def _tail(text: str, *, lines: int = 30) -> str:

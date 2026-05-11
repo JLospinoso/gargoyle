@@ -9,9 +9,11 @@ from pathlib import Path
 import pytest
 
 from gargoyle_acceptance import harness
+from gargoyle_acceptance.architecture import ArchitectureReport
 from gargoyle_acceptance.build import BuildResult
 from gargoyle_acceptance.environment import GargoyleArtifacts, Toolchain
 from gargoyle_acceptance.errors import AcceptanceError
+from gargoyle_acceptance.pe import PEMachine
 
 VALID_OUTPUT = [
     '[ ] Allocating executable memory for "setup.pic".',
@@ -45,6 +47,25 @@ VALID_X64_OUTPUT = [
     "    MessageBoxA @ --------> 0x00007FFD4B30CAC0",
     "    Timer period @ -------> 15000 ms",
     "[ ] Entering benign x64 PIC payload loop.",
+]
+VALID_ARM64_OUTPUT = [
+    '[ ] Loading ARM64 setup PIC from "setup_arm64.pic".',
+    "[+] Loaded 128 bytes of ARM64 setup PIC.",
+    '[ ] Loading ARM64 re-entry PIC from "reentry_arm64.pic".',
+    "[+] Loaded 144 bytes of ARM64 re-entry PIC.",
+    "[+] ARM64 timer/APC prototype configured.",
+    "    Gargoyle ARM64 PIC @ ------> 0x000001827D9B0000",
+    "    ARM64 re-entry PIC @ -----> 0x000001827D9C0000",
+    "    ARM64 APC callback @ ------> 0x000001827D9C0010",
+    "    Configuration @ ----------> 0x00000057D1DAF658",
+    "    VirtualProtectEx @ -------> 0x00007FFD49A72340",
+    "    WaitForSingleObjectEx @ --> 0x00007FFD49A71230",
+    "    CreateWaitableTimerW @ ---> 0x00007FFD49A70000",
+    "    SetWaitableTimer @ -------> 0x00007FFD49A71111",
+    "    MessageBoxA @ ------------> 0x00007FFD4B30CAC0",
+    "    Timer period @ -----------> 250 ms",
+    "    Runtime mode @ -----------> headless",
+    "[ ] Entering benign ARM64 PIC payload loop.",
 ]
 
 
@@ -100,6 +121,14 @@ def test_parse_setup_output_accepts_x64_complete_banner() -> None:
 
     assert parsed.addresses["Gargoyle x64 PIC"] == 0x000001827D9B0000
     assert parsed.addresses["x64 APC callback"] == 0x000001827D9C0010
+
+
+def test_parse_setup_output_accepts_arm64_complete_banner() -> None:
+    """Setup parsing accepts the ARM64 timer/APC banner."""
+    parsed = harness.parse_setup_output(VALID_ARM64_OUTPUT, "arm64")
+
+    assert parsed.addresses["Gargoyle ARM64 PIC"] == 0x000001827D9B0000
+    assert parsed.addresses["ARM64 APC callback"] == 0x000001827D9C0010
 
 
 def test_parse_setup_output_rejects_missing_marker() -> None:
@@ -164,6 +193,11 @@ def test_run_acceptance_orchestrates_build_and_runtime(
     )
     monkeypatch.setattr(harness, "artifacts_for", lambda root, configuration, platform: artifacts)
     monkeypatch.setattr(harness, "verify_artifacts", lambda value: calls.append("artifacts"))
+    monkeypatch.setattr(
+        harness,
+        "validate_pe_machine",
+        lambda executable, platform: PEMachine(value=0x014C, name="I386"),
+    )
     monkeypatch.setattr(harness, "_start_gargoyle", lambda value: process)
     monkeypatch.setattr(harness, "MessageBoxController", object)
     monkeypatch.setattr(
@@ -182,7 +216,144 @@ def test_run_acceptance_orchestrates_build_and_runtime(
 
     assert report.message_box_rounds == 2
     assert report.build is not None
+    assert report.mode == "live"
+    assert report.pe_machine == PEMachine(value=0x014C, name="I386")
     assert calls == ["windows", "artifacts", "terminated"]
+
+
+def test_run_acceptance_artifacts_mode_skips_windows_and_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Artifacts mode validates static outputs without launching Gargoyle."""
+    artifacts = GargoyleArtifacts(
+        repo_root=tmp_path,
+        configuration="Debug",
+        platform="arm64",
+        output_dir=tmp_path / "ARM64" / "Debug",
+        executable=tmp_path / "ARM64" / "Debug" / "GargoyleArm64.exe",
+        setup_pic=tmp_path / "ARM64" / "Debug" / "setup_arm64.pic",
+        reentry_pic=tmp_path / "ARM64" / "Debug" / "reentry_arm64.pic",
+    )
+    calls: list[str] = []
+
+    monkeypatch.setattr(harness, "require_windows", lambda: calls.append("windows"))
+    monkeypatch.setattr(harness, "resolve_repo_root", lambda root: tmp_path)
+    monkeypatch.setattr(harness, "artifacts_for", lambda root, configuration, platform: artifacts)
+    monkeypatch.setattr(harness, "verify_artifacts", lambda value: calls.append("artifacts"))
+    monkeypatch.setattr(
+        harness,
+        "validate_pe_machine",
+        lambda executable, platform: PEMachine(value=0xAA64, name="ARM64"),
+    )
+    monkeypatch.setattr(harness, "_start_gargoyle", lambda value: calls.append("runtime"))
+
+    report = harness.run_acceptance(
+        configuration="Debug",
+        platform="arm64",
+        repo_root=tmp_path,
+        skip_build=True,
+        mode="artifacts",
+    )
+
+    assert report.mode == "artifacts"
+    assert report.message_box_rounds == 0
+    assert report.setup.lines == ()
+    assert report.pe_machine == PEMachine(value=0xAA64, name="ARM64")
+    assert calls == ["artifacts"]
+
+
+def test_run_acceptance_architecture_mode_dispatches_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Architecture mode validates the executable's architecture report."""
+    artifacts = GargoyleArtifacts(
+        repo_root=tmp_path,
+        configuration="Debug",
+        platform="arm64ec",
+        output_dir=tmp_path / "ARM64EC" / "Debug",
+        executable=tmp_path / "ARM64EC" / "Debug" / "GargoyleArm64EC.exe",
+        setup_pic=tmp_path / "ARM64EC" / "Debug" / "setup_arm64ec.pic",
+        reentry_pic=tmp_path / "ARM64EC" / "Debug" / "reentry_arm64ec.pic",
+    )
+    architecture = ArchitectureReport(
+        platform="arm64ec",
+        machine=0xA641,
+        machine_name="ARM64EC",
+        pointer_bits=64,
+        fields=(),
+    )
+    calls: list[str] = []
+
+    monkeypatch.setattr(harness, "require_windows", lambda: calls.append("windows"))
+    monkeypatch.setattr(harness, "resolve_repo_root", lambda root: tmp_path)
+    monkeypatch.setattr(harness, "artifacts_for", lambda root, configuration, platform: artifacts)
+    monkeypatch.setattr(harness, "verify_artifacts", lambda value: calls.append("artifacts"))
+    monkeypatch.setattr(
+        harness,
+        "validate_pe_machine",
+        lambda executable, platform: PEMachine(value=0xA641, name="ARM64EC"),
+    )
+    monkeypatch.setattr(
+        harness,
+        "_run_architecture_report",
+        lambda **kwargs: architecture,
+    )
+
+    report = harness.run_acceptance(
+        configuration="Debug",
+        platform="arm64ec",
+        repo_root=tmp_path,
+        skip_build=True,
+        mode="architecture",
+    )
+
+    assert report.mode == "architecture"
+    assert report.architecture == architecture
+    assert calls == ["windows", "artifacts"]
+
+
+def test_run_acceptance_headless_mode_dispatches_setup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Headless mode parses setup output without MessageBox automation."""
+    artifacts = GargoyleArtifacts(
+        repo_root=tmp_path,
+        configuration="Debug",
+        platform="x86",
+        output_dir=tmp_path / "Debug",
+        executable=tmp_path / "Debug" / "Gargoyle.exe",
+        setup_pic=tmp_path / "Debug" / "setup.pic",
+        gadget_pic=tmp_path / "Debug" / "gadget.pic",
+    )
+    setup = harness.parse_setup_output(VALID_OUTPUT)
+    calls: list[str] = []
+
+    monkeypatch.setattr(harness, "require_windows", lambda: calls.append("windows"))
+    monkeypatch.setattr(harness, "resolve_repo_root", lambda root: tmp_path)
+    monkeypatch.setattr(harness, "artifacts_for", lambda root, configuration, platform: artifacts)
+    monkeypatch.setattr(harness, "verify_artifacts", lambda value: calls.append("artifacts"))
+    monkeypatch.setattr(
+        harness,
+        "validate_pe_machine",
+        lambda executable, platform: PEMachine(value=0x014C, name="I386"),
+    )
+    monkeypatch.setattr(harness, "_run_headless_setup", lambda **kwargs: setup)
+    monkeypatch.setattr(harness, "_close_message_boxes", lambda **kwargs: calls.append("live"))
+
+    report = harness.run_acceptance(
+        configuration="Debug",
+        repo_root=tmp_path,
+        skip_build=True,
+        mode="headless",
+    )
+
+    assert report.mode == "headless"
+    assert report.setup == setup
+    assert report.message_box_rounds == 0
+    assert calls == ["windows", "artifacts"]
 
 
 def test_run_acceptance_rejects_zero_rounds(monkeypatch: pytest.MonkeyPatch) -> None:

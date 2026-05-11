@@ -10,8 +10,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
 
+from gargoyle_acceptance.architecture import (
+    ArchitectureReport,
+    parse_architecture_report,
+    validate_architecture_report,
+)
 from gargoyle_acceptance.build import BuildResult, build_solution
 from gargoyle_acceptance.environment import (
+    AcceptanceMode,
     Configuration,
     GargoyleArtifacts,
     Platform,
@@ -22,6 +28,7 @@ from gargoyle_acceptance.environment import (
     verify_artifacts,
 )
 from gargoyle_acceptance.errors import AcceptanceError
+from gargoyle_acceptance.pe import PEMachine, validate_pe_machine
 from gargoyle_acceptance.windows import MessageBoxController
 
 EXPECTED_MARKERS = (
@@ -54,9 +61,53 @@ X64_ADDRESS_LABELS = (
     "SetWaitableTimer",
     "MessageBoxA",
 )
+ARM64_EXPECTED_MARKERS = (
+    "[+] ARM64 timer/APC prototype configured.",
+    "[ ] Entering benign ARM64 PIC payload loop.",
+)
+ARM64_ADDRESS_LABELS = (
+    "Gargoyle ARM64 PIC",
+    "ARM64 re-entry PIC",
+    "ARM64 APC callback",
+    "Configuration",
+    "VirtualProtectEx",
+    "WaitForSingleObjectEx",
+    "CreateWaitableTimerW",
+    "SetWaitableTimer",
+    "MessageBoxA",
+)
+ARM64EC_EXPECTED_MARKERS = (
+    "[+] ARM64EC timer/APC prototype configured.",
+    "[ ] Entering benign ARM64EC PIC payload loop.",
+)
+ARM64EC_ADDRESS_LABELS = (
+    "Gargoyle ARM64EC PIC",
+    "ARM64EC re-entry PIC",
+    "ARM64EC APC callback",
+    "Configuration",
+    "VirtualProtectEx",
+    "WaitForSingleObjectEx",
+    "CreateWaitableTimerW",
+    "SetWaitableTimer",
+    "MessageBoxA",
+)
 MESSAGE_BOX_TITLES: dict[Platform, str] = {
     "x86": "gargoyle",
     "x64": "gargoyle x64",
+    "arm64": "gargoyle arm64",
+    "arm64ec": "gargoyle arm64ec",
+}
+SETUP_MARKERS: dict[Platform, tuple[str, ...]] = {
+    "x86": EXPECTED_MARKERS,
+    "x64": X64_EXPECTED_MARKERS,
+    "arm64": ARM64_EXPECTED_MARKERS,
+    "arm64ec": ARM64EC_EXPECTED_MARKERS,
+}
+SETUP_ADDRESS_LABELS: dict[Platform, tuple[str, ...]] = {
+    "x86": ADDRESS_LABELS,
+    "x64": X64_ADDRESS_LABELS,
+    "arm64": ARM64_ADDRESS_LABELS,
+    "arm64ec": ARM64EC_ADDRESS_LABELS,
 }
 
 
@@ -82,12 +133,18 @@ class AcceptanceReport:
         setup: Parsed setup banner.
         message_box_rounds: Number of benign MessageBox payload windows closed.
         build: Optional build result when the harness built first.
+        mode: Acceptance mode used for the run.
+        pe_machine: Optional PE machine evidence.
+        architecture: Optional architecture report evidence.
     """
 
     artifacts: GargoyleArtifacts
     setup: SetupObservation
     message_box_rounds: int
     build: BuildResult | None
+    mode: AcceptanceMode = "live"
+    pe_machine: PEMachine | None = None
+    architecture: ArchitectureReport | None = None
 
 
 class LineReader:
@@ -134,6 +191,7 @@ def run_acceptance(
     skip_build: bool = False,
     rounds: int = 2,
     timeout_seconds: float = 45.0,
+    mode: AcceptanceMode = "live",
 ) -> AcceptanceReport:
     """Run the one-click Gargoyle acceptance check.
 
@@ -145,6 +203,7 @@ def run_acceptance(
         skip_build: Whether to skip the MSBuild step.
         rounds: Number of benign MessageBox payload windows to close.
         timeout_seconds: Overall timeout for setup and window validation.
+        mode: Acceptance mode. `live` preserves the historical MessageBox validation.
 
     Returns:
         Acceptance report with parsed setup evidence.
@@ -152,8 +211,9 @@ def run_acceptance(
     Raises:
         AcceptanceError: If any validation step fails.
     """
-    require_windows()
-    if rounds < 1:
+    if mode != "artifacts":
+        require_windows()
+    if mode == "live" and rounds < 1:
         raise AcceptanceError(
             "Invalid rounds",
             f"Expected at least one MessageBox round, got {rounds}.",
@@ -161,10 +221,48 @@ def run_acceptance(
         )
 
     root = resolve_repo_root(repo_root)
-    toolchain = resolve_toolchain(msbuild)
-    build = None if skip_build else build_solution(root, configuration, platform, toolchain)
+    build = None
+    if not skip_build:
+        toolchain = resolve_toolchain(msbuild)
+        build = build_solution(root, configuration, platform, toolchain)
     artifacts = artifacts_for(root, configuration, platform)
     verify_artifacts(artifacts)
+    pe_machine = validate_pe_machine(artifacts.executable, platform)
+
+    if mode == "artifacts":
+        return _artifact_report(
+            artifacts=artifacts,
+            build=build,
+            mode=mode,
+            pe_machine=pe_machine,
+        )
+    if mode == "architecture":
+        architecture = _run_architecture_report(
+            artifacts=artifacts,
+            platform=platform,
+            timeout_seconds=timeout_seconds,
+        )
+        return _artifact_report(
+            artifacts=artifacts,
+            build=build,
+            mode=mode,
+            pe_machine=pe_machine,
+            architecture=architecture,
+        )
+    if mode == "headless":
+        setup = _run_headless_setup(
+            artifacts=artifacts,
+            platform=platform,
+            timeout_seconds=timeout_seconds,
+        )
+        return AcceptanceReport(
+            artifacts=artifacts,
+            setup=setup,
+            message_box_rounds=0,
+            build=build,
+            mode=mode,
+            pe_machine=pe_machine,
+        )
 
     process = _start_gargoyle(artifacts)
     controller = MessageBoxController()
@@ -184,6 +282,8 @@ def run_acceptance(
         setup=setup,
         message_box_rounds=closed_rounds,
         build=build,
+        mode=mode,
+        pe_machine=pe_machine,
     )
 
 
@@ -203,8 +303,8 @@ def parse_setup_output(
     Raises:
         AcceptanceError: If required markers or addresses are missing.
     """
-    expected_markers = X64_EXPECTED_MARKERS if platform == "x64" else EXPECTED_MARKERS
-    address_labels = X64_ADDRESS_LABELS if platform == "x64" else ADDRESS_LABELS
+    expected_markers = SETUP_MARKERS[platform]
+    address_labels = SETUP_ADDRESS_LABELS[platform]
     missing_markers = [marker for marker in expected_markers if marker not in lines]
     addresses = _parse_addresses(lines, address_labels)
     missing_addresses = [label for label in address_labels if label not in addresses]
@@ -246,11 +346,46 @@ def setup_banner_complete(lines: list[str], platform: Platform = "x86") -> bool:
     return True
 
 
-def _start_gargoyle(artifacts: GargoyleArtifacts) -> subprocess.Popen[str]:
+def _artifact_report(
+    *,
+    artifacts: GargoyleArtifacts,
+    build: BuildResult | None,
+    mode: AcceptanceMode,
+    pe_machine: PEMachine,
+    architecture: ArchitectureReport | None = None,
+) -> AcceptanceReport:
+    """Build a report for non-live acceptance modes.
+
+    Args:
+        artifacts: Resolved executable and PIC paths.
+        build: Optional build result.
+        mode: Acceptance mode used.
+        pe_machine: Parsed PE machine evidence.
+        architecture: Optional architecture report evidence.
+
+    Returns:
+        Acceptance report without live MessageBox rounds.
+    """
+    return AcceptanceReport(
+        artifacts=artifacts,
+        setup=SetupObservation(lines=(), addresses={}),
+        message_box_rounds=0,
+        build=build,
+        mode=mode,
+        pe_machine=pe_machine,
+        architecture=architecture,
+    )
+
+
+def _start_gargoyle(
+    artifacts: GargoyleArtifacts,
+    extra_args: tuple[str, ...] = (),
+) -> subprocess.Popen[str]:
     """Start Gargoyle from the output directory.
 
     Args:
         artifacts: Resolved executable and PIC paths.
+        extra_args: Optional command-line arguments.
 
     Returns:
         Running Gargoyle process.
@@ -260,7 +395,7 @@ def _start_gargoyle(artifacts: GargoyleArtifacts) -> subprocess.Popen[str]:
     """
     try:
         return subprocess.Popen(
-            [str(artifacts.executable)],
+            [str(artifacts.executable), *extra_args],
             cwd=artifacts.output_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -275,6 +410,108 @@ def _start_gargoyle(artifacts: GargoyleArtifacts) -> subprocess.Popen[str]:
             f"Could not start {artifacts.executable}: {exc}",
             "Confirm the executable exists and is not blocked by endpoint controls.",
         ) from exc
+
+
+def _run_architecture_report(
+    *,
+    artifacts: GargoyleArtifacts,
+    platform: Platform,
+    timeout_seconds: float,
+) -> ArchitectureReport:
+    """Run the executable's architecture-report command.
+
+    Args:
+        artifacts: Resolved executable and PIC paths.
+        platform: Expected platform.
+        timeout_seconds: Maximum time to wait for the report.
+
+    Returns:
+        Parsed and validated architecture report.
+
+    """
+    output = _run_gargoyle_once(
+        artifacts=artifacts,
+        extra_args=("--architecture-report",),
+        timeout_seconds=timeout_seconds,
+        label="Architecture report",
+    )
+    report = parse_architecture_report(tuple(output.splitlines()), expected_platform=platform)
+    return validate_architecture_report(report, platform)
+
+
+def _run_headless_setup(
+    *,
+    artifacts: GargoyleArtifacts,
+    platform: Platform,
+    timeout_seconds: float,
+) -> SetupObservation:
+    """Run the executable's headless setup-smoke command.
+
+    Args:
+        artifacts: Resolved executable and PIC paths.
+        platform: Expected platform.
+        timeout_seconds: Maximum time to wait for the setup smoke.
+
+    Returns:
+        Parsed setup banner.
+    """
+    output = _run_gargoyle_once(
+        artifacts=artifacts,
+        extra_args=("--mode", "headless"),
+        timeout_seconds=timeout_seconds,
+        label="Headless setup",
+    )
+    return parse_setup_output(tuple(output.splitlines()), platform=platform)
+
+
+def _run_gargoyle_once(
+    *,
+    artifacts: GargoyleArtifacts,
+    extra_args: tuple[str, ...],
+    timeout_seconds: float,
+    label: str,
+) -> str:
+    """Run Gargoyle once and capture stdout.
+
+    Args:
+        artifacts: Resolved executable and PIC paths.
+        extra_args: Command-line arguments for the executable.
+        timeout_seconds: Maximum time to wait.
+        label: User-facing operation label.
+
+    Returns:
+        Captured stdout and stderr.
+
+    Raises:
+        AcceptanceError: If the process fails or times out.
+    """
+    command = (str(artifacts.executable), *extra_args)
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=artifacts.output_dir,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise AcceptanceError(
+            f"{label} timed out",
+            f"{artifacts.executable} did not finish within {timeout_seconds:.0f} seconds.",
+            f"Command: {' '.join(command)}",
+        ) from exc
+    output = completed.stdout or ""
+    if completed.returncode != 0:
+        raise AcceptanceError(
+            f"{label} failed",
+            f"{artifacts.executable} exited with code {completed.returncode}.\n{_tail(output)}",
+            "Inspect the executable output and rebuild the requested platform.",
+        )
+    return output
 
 
 def _wait_for_setup(
@@ -415,3 +652,16 @@ def _parse_addresses(
                 except ValueError:
                     continue
     return addresses
+
+
+def _tail(text: str, *, lines: int = 30) -> str:
+    """Return a compact tail of command output.
+
+    Args:
+        text: Complete command output.
+        lines: Number of trailing lines to keep.
+
+    Returns:
+        The trailing output lines.
+    """
+    return "\n".join(text.splitlines()[-lines:])

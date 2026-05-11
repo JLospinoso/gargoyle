@@ -35,6 +35,10 @@ boundaries, and safety context that matter for this project.
   validation on `Platform=x86` unless a plan explicitly changes it. The `GargoyleX64/`
   sibling example builds with `Platform=x64` and should stay clearly separated from the
   Win32 baseline.
+- ARM parity work uses solution platforms `ARM64` and `ARM64EC` with expected sibling
+  project names `GargoyleArm64` and `GargoyleArm64EC`. Harness and documentation changes
+  may prepare those paths, but do not edit ARM native runtime/project files unless the
+  approved plan assigns that ownership.
 - The project expects a current Visual Studio C++ toolchain, Windows SDK selection through
   `WindowsTargetPlatformVersion` `10.0`, NASM on `PATH`, `uv`, and Python 3.13.
 - The `MSBUILD` environment variable may override MSBuild discovery. Do not hard-code
@@ -76,12 +80,16 @@ just lock-check
 just build-debug
 just build-release
 just build-x64-all
+just build-arm-all
+just windows-arm-smoke
 just native-check
 just check
 uv run --all-groups gargoyle-acceptance --configuration Debug
 uv run --all-groups gargoyle-acceptance --configuration Release
 uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64
 uv run --all-groups gargoyle-acceptance --configuration Release --platform x64
+uv run --all-groups gargoyle-acceptance --configuration Debug --platform arm64 --mode artifacts
+uv run --all-groups gargoyle-acceptance --configuration Debug --platform arm64ec --mode artifacts
 ```
 
 - Run targeted checks while iterating, then run `just ci` before claiming completion when

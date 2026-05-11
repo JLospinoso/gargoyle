@@ -8,13 +8,15 @@
 implementation remains the reference baseline (64-bit Windows on Windows is
 fine). This refresh also includes a sibling x64 example in `GargoyleX64\` that
 uses pointer-sized configuration, Win64 ABI PIC calls, and a benign timer/APC
-re-entry loop without replacing the Win32 design.
+re-entry loop without replacing the Win32 design. The solution now also carries
+ARM64 and ARM64EC sibling demos for Windows-on-Arm smoke validation.
 
 The current baseline is tested with:
 
 * [Visual Studio](https://visualstudio.microsoft.com/downloads/): Visual Studio 18 with MSVC toolset `v145`, or a compatible retargeted Visual Studio C++ toolchain.
 * Windows 10 SDK. The project uses `WindowsTargetPlatformVersion` `10.0` so MSBuild selects the latest installed Windows 10 SDK.
 * [Netwide Assembler](https://www.nasm.us/) on your `PATH`. On Windows, you can install the current winget package:
+* ARM64 and ARM64EC builds also require the Visual C++ ARM64 toolchain and `armasm64`.
 
 ```powershell
 winget install --id NASM.NASM --source winget --accept-package-agreements --accept-source-agreements
@@ -38,6 +40,8 @@ native examples from PowerShell:
 & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' Gargoyle.sln /p:Configuration=Release /p:Platform=x86 /m
 & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' Gargoyle.sln /p:Configuration=Debug /p:Platform=x64 /m
 & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' Gargoyle.sln /p:Configuration=Release /p:Platform=x64 /m
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' Gargoyle.sln /p:Configuration=Debug /p:Platform=ARM64 /m
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' Gargoyle.sln /p:Configuration=Debug /p:Platform=ARM64EC /m
 ```
 
 The executable loads `setup.pic` and `gadget.pic` relative to the current working directory. The Visual Studio debugger is configured to run from the output directory so F5 can find those files. If you launch manually, run from `Debug\` or `Release\`.
@@ -56,12 +60,18 @@ uv sync --all-groups
 uv run gargoyle-acceptance --configuration Debug
 uv run gargoyle-acceptance --configuration Release
 uv run gargoyle-acceptance --configuration Debug --platform x64
+uv run gargoyle-acceptance --configuration Debug --platform arm64 --mode artifacts
 ```
 
 The harness builds the requested configuration and platform, launches the
 executable from the output directory, validates the setup banner, and closes two
 benign MessageBox windows to confirm initial PIC execution and timer re-entry.
-Use `uv run gargoyle-acceptance --help` for options.
+The default `--mode live` preserves that behavior. `--mode artifacts` validates
+expected files and PE machine type without launching the executable,
+`--mode architecture` parses a non-interactive architecture report from
+`--architecture-report`, and `--mode headless` parses setup output from
+`--mode headless` without MessageBox automation. Use
+`uv run gargoyle-acceptance --help` for options.
 
 The native quality gate is MSVC-based:
 
@@ -77,6 +87,8 @@ The x64 example builds through the root solution:
 
 ```powershell
 just build-x64-all
+just build-arm-all
+just windows-arm-smoke
 ```
 
 Run `GargoyleX64.exe` from its configuration output directory so it can find

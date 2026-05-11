@@ -17,6 +17,116 @@ without reading the full chat.
 
 ## Active Plans
 
+### Plan: Issue #22 ARM64/ARM64EC Parity And Windows-On-Arm CI Smoke
+
+#### Objective
+
+Add modern Windows-on-Arm parity through ARM64 and ARM64EC sibling demos, CI-safe
+architecture/runtime smoke coverage, and platform-aware acceptance tooling.
+
+Definition of done:
+
+- `Gargoyle.sln` contains `GargoyleArm64` and `GargoyleArm64EC` sibling projects.
+- ARM64 and ARM64EC demos build setup/re-entry PIC blobs with `armasm64`.
+- Existing x86/x64 binaries and new ARM binaries expose `--architecture-report`.
+- ARM binaries expose `--mode live|headless`, `--rounds`, and `--period-ms`.
+- `gargoyle-acceptance` supports `x86`, `x64`, `arm64`, and `arm64ec`, plus
+  `live`, `architecture`, `headless`, and `artifacts` modes.
+- GitHub Actions includes a hosted `windows-11-arm` smoke job.
+- Local canonical validation passes and ARM runtime validation is delegated to hosted ARM CI.
+
+#### User Decisions And Assumptions
+
+User decisions:
+
+- 2026-05-10: User approved the ARM64/ARM64EC plan and asked for implementation.
+- 2026-05-10: User chose a single focused PR and a creative non-GUI hosted ARM demo.
+
+Assumptions:
+
+- ARM32 remains out of scope because current Windows-on-Arm work is ARM64-centered.
+- ARM64EC v1 proves build/run identity and hosted Windows-on-Arm behavior, not mixed x64 DLL
+  interop.
+- Hosted ARM CI should run short benign console processes and avoid GUI automation.
+
+#### Scope
+
+In scope:
+
+- ARM64/ARM64EC project files, ARM PIC extraction, runtime harnesses, acceptance harness,
+  tests, docs, issue, PR, and CI.
+
+Out of scope:
+
+- ARM32.
+- Hosted CI MessageBox automation.
+- ARM64EC mixed x64 DLL interop.
+- Merging the PR.
+
+#### Interfaces And Data Flow
+
+- `--platform` accepts canonical lowercase values `x86`, `x64`, `arm64`, and `arm64ec`; MSBuild
+  receives `x86`, `x64`, `ARM64`, and `ARM64EC`.
+- `--mode live` builds, validates artifacts and PE machine, launches the demo, parses setup, and
+  closes MessageBox windows.
+- `--mode artifacts` builds unless skipped, validates required files, and checks PE machine.
+- `--mode architecture` runs `--architecture-report` and parses `platform`, `machine`, and
+  `pointer_bits`.
+- `--mode headless` runs `--mode headless` and parses setup output without MessageBox
+  automation.
+- `build/ArmPic.targets` assembles ARM PIC sources into COFF with `armasm64`, then
+  `build/extract_pic.py` extracts `.text` into raw `.pic` blobs.
+- `GARGOYLE_PLATFORM_TOOLSET` can override `PlatformToolset` for hosted ARM images that use a
+  compatible Visual Studio toolset such as `v143`.
+
+#### Validation
+
+Targeted checks:
+
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x86 --mode architecture --skip-build`
+- `uv run --all-groups gargoyle-acceptance --configuration Debug --platform x64 --mode architecture --skip-build`
+- `just check`
+- `just build-arm64-debug` was probed locally and reached the expected missing ARM toolset
+  failure.
+
+Canonical gate:
+
+- `just ci`
+
+Hosted gate:
+
+- `just windows-arm-smoke` on GitHub Actions `windows-11-arm`
+
+#### Risks And Stop Conditions
+
+- Stop if parallel native edits create conflicting artifact names or CLI flags.
+- Stop if CI runner availability for `windows-11-arm` requires user or repository-owner judgment.
+- Stop after three CI-fix iterations.
+
+#### Progress Log
+
+- 2026-05-10: Created issue #22 and branch `codex/arm64-arm64ec-parity`.
+- 2026-05-10: Added ARM64/ARM64EC projects, ARM PIC target, and COFF `.text` extractor.
+- 2026-05-10: Added ARM64/ARM64EC runtime demos with architecture-report, live, and headless
+  modes.
+- 2026-05-10: Extended the acceptance harness, tests, docs, and CI for ARM platforms and modes.
+- 2026-05-10: Local x86/x64 architecture acceptance passed for Debug outputs.
+- 2026-05-10: Local ARM build probe reached expected MSB8020 missing ARM toolset failure on this
+  workstation; hosted `windows-11-arm` CI is the runtime validation target.
+- 2026-05-10: `just check` and `just ci` passed locally.
+
+#### Handoff Packet
+
+- Branch: `codex/arm64-arm64ec-parity`
+- PR/issue: issue #22; PR pending
+- Current status: implementation complete locally; push, PR creation, and hosted CI remain
+- Completed: issue; project/build/runtime/harness/tests/docs/CI updates
+- Remaining: commit, push, open PR, monitor GitHub checks
+- Validation run: x86/x64 Debug architecture acceptance; `just check`; `just ci`
+- Failed/skipped checks: local ARM build skipped after expected missing ARM toolset failure
+- Residual risks: hosted `windows-11-arm` image/toolset behavior must validate ARM64 and ARM64EC
+  runtime smoke paths
+
 ### Plan: Native Quality Hardening
 
 #### Objective

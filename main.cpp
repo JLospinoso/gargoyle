@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <fstream>
 #include <stdexcept>
@@ -18,8 +19,13 @@ using namespace std;
 namespace {
   typedef void(*callable)(void*);
   typedef tuple<void*, size_t> MyTuple;
+  typedef BOOL(WINAPI* IsWow64Process2Fn)(HANDLE, USHORT*, USHORT*);
   constexpr DWORD invocation_interval_ms = 15 * 1000;
   constexpr size_t stack_size = 0x10000;
+
+#ifndef IMAGE_FILE_MACHINE_ARM64EC
+  constexpr USHORT IMAGE_FILE_MACHINE_ARM64EC = 0xA641;
+#endif
 
   constexpr array<array<uint8_t, 3>, 2> rop_gadget_candidates{ {
     { 0x59, 0x5C, 0xC3 },                   // pop ecx; pop esp; ret
@@ -67,6 +73,94 @@ namespace {
     void* address;
     string source;
   };
+
+  constexpr USHORT compiled_machine() {
+#if defined(_M_IX86)
+    return IMAGE_FILE_MACHINE_I386;
+#elif defined(_M_X64)
+    return IMAGE_FILE_MACHINE_AMD64;
+#elif defined(_M_ARM64EC)
+    return IMAGE_FILE_MACHINE_ARM64EC;
+#elif defined(_M_ARM64)
+    return IMAGE_FILE_MACHINE_ARM64;
+#else
+    return IMAGE_FILE_MACHINE_UNKNOWN;
+#endif
+  }
+
+  const char* machine_name(USHORT machine) {
+    switch (machine) {
+    case IMAGE_FILE_MACHINE_I386:
+      return "x86";
+    case IMAGE_FILE_MACHINE_AMD64:
+      return "x64";
+    case IMAGE_FILE_MACHINE_ARM64:
+      return "arm64";
+    case IMAGE_FILE_MACHINE_ARM64EC:
+      return "arm64ec";
+    case IMAGE_FILE_MACHINE_UNKNOWN:
+      return "unknown";
+    default:
+      return "other";
+    }
+  }
+
+  USHORT native_machine_from_system_info() {
+    SYSTEM_INFO info{};
+    GetNativeSystemInfo(&info);
+    switch (info.wProcessorArchitecture) {
+    case PROCESSOR_ARCHITECTURE_INTEL:
+      return IMAGE_FILE_MACHINE_I386;
+    case PROCESSOR_ARCHITECTURE_AMD64:
+      return IMAGE_FILE_MACHINE_AMD64;
+    case PROCESSOR_ARCHITECTURE_ARM64:
+      return IMAGE_FILE_MACHINE_ARM64;
+    default:
+      return IMAGE_FILE_MACHINE_UNKNOWN;
+    }
+  }
+
+  void print_architecture_report() {
+    auto process_machine = compiled_machine();
+    auto native_machine = native_machine_from_system_info();
+    auto used_is_wow64_process2 = false;
+
+    const auto kernel32 = GetModuleHandleW(L"kernel32.dll");
+    const auto is_wow64_process2 = kernel32
+      ? reinterpret_cast<IsWow64Process2Fn>(GetProcAddress(kernel32, "IsWow64Process2"))
+      : nullptr;
+    if (is_wow64_process2) {
+      USHORT reported_process_machine = IMAGE_FILE_MACHINE_UNKNOWN;
+      USHORT reported_native_machine = IMAGE_FILE_MACHINE_UNKNOWN;
+      if (is_wow64_process2(GetCurrentProcess(), &reported_process_machine, &reported_native_machine)) {
+        used_is_wow64_process2 = true;
+        if (reported_process_machine != IMAGE_FILE_MACHINE_UNKNOWN) {
+          process_machine = reported_process_machine;
+        }
+        if (reported_native_machine != IMAGE_FILE_MACHINE_UNKNOWN) {
+          native_machine = reported_native_machine;
+        }
+      }
+    }
+
+    printf("[+] Architecture report.\n");
+    printf("platform=%s\n", machine_name(compiled_machine()));
+    printf("machine=0x%04hx\n", compiled_machine());
+    printf("pointer_bits=%zu\n", sizeof(void*) * 8);
+    printf("    Compiled machine @ ----> 0x%04hx (%s)\n", compiled_machine(), machine_name(compiled_machine()));
+    printf("    Process machine @ -----> 0x%04hx (%s)\n", process_machine, machine_name(process_machine));
+    printf("    Native machine @ ------> 0x%04hx (%s)\n", native_machine, machine_name(native_machine));
+    printf("    IsWow64Process2 @ ----> %s\n", used_is_wow64_process2 ? "available" : "unavailable");
+  }
+
+  bool has_argument(int argc, char** argv, const char* value) {
+    for (auto index = 1; index < argc; ++index) {
+      if (strcmp(argv[index], value) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   string win32_error(const string& operation, DWORD error = GetLastError()) {
     LPSTR message = nullptr;
@@ -283,9 +377,13 @@ void launch(const string& setup_pic_path, const string& gadget_system_dll_filena
   reinterpret_cast<callable>(setup_memory)(&config);
 }
 
-int main() {
+int main(int argc, char** argv) {
   setvbuf(stdout, nullptr, _IONBF, 0);
   try {
+    if (has_argument(argc, argv, "--architecture-report")) {
+      print_architecture_report();
+      return 0;
+    }
     launch("setup.pic", "mshtml.dll", "gadget.pic");
   } catch (exception& e) {
     printf("%s\n", e.what());

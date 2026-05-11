@@ -40,6 +40,61 @@ def test_build_solution_uses_expected_msbuild_command(
     assert "Build succeeded" in result.output
 
 
+def test_build_solution_uses_visual_studio_arm_platform_name(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ARM platform builds use Visual Studio's uppercase platform spelling."""
+    seen: dict[str, object] = {}
+
+    def fake_run(command: tuple[str, ...], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen["command"] = command
+        seen["cwd"] = kwargs["cwd"]
+        return subprocess.CompletedProcess(command, 0, stdout="Build succeeded.")
+
+    monkeypatch.setattr(build.subprocess, "run", fake_run)
+    toolchain = Toolchain(msbuild=Path("MSBuild.exe"), nasm=Path("nasm.exe"))
+
+    result = build.build_solution(tmp_path, "Debug", "arm64ec", toolchain)
+
+    assert result.command == (
+        "MSBuild.exe",
+        "Gargoyle.sln",
+        "/p:Configuration=Debug",
+        "/p:Platform=ARM64EC",
+        "/m",
+    )
+    assert seen["cwd"] == tmp_path
+
+
+def test_build_solution_accepts_toolset_environment_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Optional toolset override is passed to MSBuild for hosted ARM images."""
+    seen: dict[str, object] = {}
+
+    def fake_run(command: tuple[str, ...], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen["command"] = command
+        return subprocess.CompletedProcess(command, 0, stdout="Build succeeded.")
+
+    monkeypatch.setattr(build.subprocess, "run", fake_run)
+    monkeypatch.setattr(build, "environ", {"GARGOYLE_PLATFORM_TOOLSET": "v143"})
+    toolchain = Toolchain(msbuild=Path("MSBuild.exe"), nasm=Path("nasm.exe"))
+
+    result = build.build_solution(tmp_path, "Debug", "arm64", toolchain)
+
+    assert result.command == (
+        "MSBuild.exe",
+        "Gargoyle.sln",
+        "/p:Configuration=Debug",
+        "/p:Platform=ARM64",
+        "/p:PlatformToolset=v143",
+        "/m",
+    )
+    assert result.output == "Build succeeded."
+
+
 def test_build_environment_prepends_nasm_directory(monkeypatch: pytest.MonkeyPatch) -> None:
     """MSBuild receives a PATH where the resolved NASM directory comes first."""
     monkeypatch.setattr(build, "environ", {"PATH": "existing"})

@@ -10,8 +10,11 @@ import gargoyle_acceptance.environment as env
 from gargoyle_acceptance.environment import (
     artifacts_for,
     coerce_optional_path,
+    msbuild_platform,
+    parse_acceptance_mode,
     parse_configuration,
     parse_platform,
+    platform_pointer_bits,
     require_windows,
     resolve_msbuild,
     resolve_nasm,
@@ -35,15 +38,44 @@ def test_parse_configuration_rejects_unknown_value() -> None:
 
 
 def test_parse_platform_accepts_supported_values() -> None:
-    """Platform parsing accepts the two supported Visual Studio solution platforms."""
+    """Platform parsing accepts the supported Visual Studio solution platforms."""
     assert parse_platform("x86") == "x86"
     assert parse_platform("X64") == "x64"
+    assert parse_platform("ARM64") == "arm64"
+    assert parse_platform("Arm64EC") == "arm64ec"
 
 
 def test_parse_platform_rejects_unknown_value() -> None:
     """Platform parsing gives a clear error for unsupported names."""
     with pytest.raises(AcceptanceError, match="Unsupported platform"):
-        parse_platform("arm64")
+        parse_platform("mips")
+
+
+def test_parse_acceptance_mode_accepts_supported_values() -> None:
+    """Mode parsing accepts all supported acceptance modes."""
+    assert parse_acceptance_mode("live") == "live"
+    assert parse_acceptance_mode("Architecture") == "architecture"
+    assert parse_acceptance_mode("HEADLESS") == "headless"
+    assert parse_acceptance_mode("artifacts") == "artifacts"
+
+
+def test_parse_acceptance_mode_rejects_unknown_value() -> None:
+    """Mode parsing gives a clear error for unsupported names."""
+    with pytest.raises(AcceptanceError, match="Unsupported acceptance mode"):
+        parse_acceptance_mode("desktop")
+
+
+def test_msbuild_platform_uses_visual_studio_spelling() -> None:
+    """MSBuild platform names preserve Visual Studio ARM capitalization."""
+    assert msbuild_platform("x86") == "x86"
+    assert msbuild_platform("arm64") == "ARM64"
+    assert msbuild_platform("arm64ec") == "ARM64EC"
+
+
+def test_platform_pointer_bits() -> None:
+    """Pointer width expectations match the native platform families."""
+    assert platform_pointer_bits("x86") == 32
+    assert platform_pointer_bits("arm64ec") == 64
 
 
 def test_require_windows_rejects_non_windows() -> None:
@@ -122,6 +154,28 @@ def test_artifacts_for_uses_x64_default_output_directory(tmp_path: Path) -> None
     assert artifacts.reentry_pic == tmp_path / "x64" / "Release" / "reentry_x64.pic"
 
 
+def test_artifacts_for_uses_arm64_default_output_directory(tmp_path: Path) -> None:
+    """ARM64 artifact paths match the expected root solution output."""
+    artifacts = artifacts_for(tmp_path, "Debug", "arm64")
+
+    assert artifacts.output_dir == tmp_path / "ARM64" / "Debug"
+    assert artifacts.platform == "arm64"
+    assert artifacts.executable == tmp_path / "ARM64" / "Debug" / "GargoyleArm64.exe"
+    assert artifacts.setup_pic == tmp_path / "ARM64" / "Debug" / "setup_arm64.pic"
+    assert artifacts.reentry_pic == tmp_path / "ARM64" / "Debug" / "reentry_arm64.pic"
+
+
+def test_artifacts_for_uses_arm64ec_default_output_directory(tmp_path: Path) -> None:
+    """ARM64EC artifact paths match the expected root solution output."""
+    artifacts = artifacts_for(tmp_path, "Release", "arm64ec")
+
+    assert artifacts.output_dir == tmp_path / "ARM64EC" / "Release"
+    assert artifacts.platform == "arm64ec"
+    assert artifacts.executable == tmp_path / "ARM64EC" / "Release" / "GargoyleArm64EC.exe"
+    assert artifacts.setup_pic == tmp_path / "ARM64EC" / "Release" / "setup_arm64ec.pic"
+    assert artifacts.reentry_pic == tmp_path / "ARM64EC" / "Release" / "reentry_arm64ec.pic"
+
+
 def test_artifacts_for_selects_existing_candidate(tmp_path: Path) -> None:
     """Artifact discovery accepts an alternate VS output candidate when files exist there."""
     output_dir = tmp_path / "GargoyleX64" / "Debug"
@@ -131,6 +185,19 @@ def test_artifacts_for_selects_existing_candidate(tmp_path: Path) -> None:
     (output_dir / "reentry_x64.pic").write_text("")
 
     artifacts = artifacts_for(tmp_path, "Debug", "x64")
+
+    assert artifacts.output_dir == output_dir
+
+
+def test_artifacts_for_selects_existing_arm_candidate(tmp_path: Path) -> None:
+    """ARM artifact discovery accepts project-local output candidates."""
+    output_dir = tmp_path / "GargoyleArm64EC" / "Debug"
+    output_dir.mkdir(parents=True)
+    (output_dir / "GargoyleArm64EC.exe").write_text("")
+    (output_dir / "setup_arm64ec.pic").write_text("")
+    (output_dir / "reentry_arm64ec.pic").write_text("")
+
+    artifacts = artifacts_for(tmp_path, "Debug", "arm64ec")
 
     assert artifacts.output_dir == output_dir
 

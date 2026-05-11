@@ -12,6 +12,7 @@ from rich.table import Table
 
 from gargoyle_acceptance.environment import (
     coerce_optional_path,
+    parse_acceptance_mode,
     parse_configuration,
     parse_platform,
 )
@@ -48,9 +49,17 @@ def acceptance(
         typer.Option(
             "--platform",
             "-p",
-            help="Visual Studio solution platform to build and run.",
+            help="Visual Studio solution platform to build and validate.",
         ),
     ] = "x86",
+    mode: Annotated[
+        str,
+        typer.Option(
+            "--mode",
+            "-m",
+            help="Acceptance mode: live, architecture, headless, or artifacts.",
+        ),
+    ] = "live",
     msbuild: Annotated[
         Path | None,
         typer.Option("--msbuild", help="Optional full path to MSBuild.exe."),
@@ -77,6 +86,7 @@ def acceptance(
         configuration: Visual Studio configuration to build and run.
         repo_root: Optional repository root.
         platform: Visual Studio solution platform to build and run.
+        mode: Acceptance mode to run.
         msbuild: Optional MSBuild path.
         skip_build: Whether to skip the build step.
         rounds: Number of MessageBox rounds to validate.
@@ -89,6 +99,7 @@ def acceptance(
         report = run_acceptance(
             configuration=parse_configuration(configuration),
             platform=parse_platform(platform),
+            mode=parse_acceptance_mode(mode),
             repo_root=coerce_optional_path(repo_root),
             msbuild=coerce_optional_path(msbuild),
             skip_build=skip_build,
@@ -122,9 +133,18 @@ def _render_success(report: AcceptanceReport) -> None:
     table = Table(title="Gargoyle Acceptance")
     table.add_column("Check", style="bold")
     table.add_column("Value")
+    table.add_row("Mode", report.mode)
     table.add_row("Configuration", report.artifacts.configuration)
     table.add_row("Platform", report.artifacts.platform)
     table.add_row("Executable", str(report.artifacts.executable))
+    if report.pe_machine is not None:
+        table.add_row(
+            "PE machine",
+            f"{report.pe_machine.name} (0x{report.pe_machine.value:04X})",
+        )
+    if report.architecture is not None:
+        table.add_row("Reported platform", report.architecture.platform)
+        table.add_row("Reported pointer bits", str(report.architecture.pointer_bits))
     table.add_row("MessageBox rounds", str(report.message_box_rounds))
     table.add_row("Setup lines", str(len(report.setup.lines)))
     for label, address in report.setup.addresses.items():

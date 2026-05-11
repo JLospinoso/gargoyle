@@ -14,8 +14,27 @@ from gargoyle_acceptance.errors import AcceptanceError
 
 Configuration = Literal["Debug", "Release"]
 VALID_CONFIGURATIONS: tuple[Configuration, ...] = ("Debug", "Release")
-Platform = Literal["x86", "x64"]
-VALID_PLATFORMS: tuple[Platform, ...] = ("x86", "x64")
+Platform = Literal["x86", "x64", "arm64", "arm64ec"]
+VALID_PLATFORMS: tuple[Platform, ...] = ("x86", "x64", "arm64", "arm64ec")
+AcceptanceMode = Literal["live", "architecture", "headless", "artifacts"]
+VALID_ACCEPTANCE_MODES: tuple[AcceptanceMode, ...] = (
+    "live",
+    "architecture",
+    "headless",
+    "artifacts",
+)
+MSBUILD_PLATFORM_NAMES: dict[Platform, str] = {
+    "x86": "x86",
+    "x64": "x64",
+    "arm64": "ARM64",
+    "arm64ec": "ARM64EC",
+}
+PLATFORM_POINTER_BITS: dict[Platform, int] = {
+    "x86": 32,
+    "x64": 64,
+    "arm64": 64,
+    "arm64ec": 64,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,8 +117,55 @@ def parse_platform(value: str) -> Platform:
     raise AcceptanceError(
         "Unsupported platform",
         f"Expected one of {', '.join(VALID_PLATFORMS)}, got {value!r}.",
-        "Use --platform x86 or --platform x64.",
+        "Use --platform x86, x64, arm64, or arm64ec.",
     )
+
+
+def parse_acceptance_mode(value: str) -> AcceptanceMode:
+    """Normalize an acceptance harness mode option.
+
+    Args:
+        value: User-provided acceptance mode.
+
+    Returns:
+        A supported acceptance mode literal.
+
+    Raises:
+        AcceptanceError: If the mode is not supported.
+    """
+    normalized = value.strip()
+    for mode in VALID_ACCEPTANCE_MODES:
+        if normalized.lower() == mode:
+            return mode
+    raise AcceptanceError(
+        "Unsupported acceptance mode",
+        f"Expected one of {', '.join(VALID_ACCEPTANCE_MODES)}, got {value!r}.",
+        "Use --mode live, architecture, headless, or artifacts.",
+    )
+
+
+def msbuild_platform(platform_name: Platform) -> str:
+    """Return the Visual Studio solution platform spelling for MSBuild.
+
+    Args:
+        platform_name: Canonical harness platform.
+
+    Returns:
+        MSBuild platform name.
+    """
+    return MSBUILD_PLATFORM_NAMES[platform_name]
+
+
+def platform_pointer_bits(platform_name: Platform) -> int:
+    """Return the expected native pointer width for a platform.
+
+    Args:
+        platform_name: Canonical harness platform.
+
+    Returns:
+        Expected pointer width in bits.
+    """
+    return PLATFORM_POINTER_BITS[platform_name]
 
 
 def require_windows(system_name: str | None = None) -> None:
@@ -210,10 +276,36 @@ def _artifact_candidates(
             _x86_artifacts(repo_root, configuration, repo_root / "Win32" / configuration),
             _x86_artifacts(repo_root, configuration, repo_root / "x86" / configuration),
         )
-    return (
-        _x64_artifacts(repo_root, configuration, repo_root / "x64" / configuration),
-        _x64_artifacts(repo_root, configuration, repo_root / "GargoyleX64" / "x64" / configuration),
-        _x64_artifacts(repo_root, configuration, repo_root / "GargoyleX64" / configuration),
+    if platform_name == "x64":
+        return (
+            _x64_artifacts(repo_root, configuration, repo_root / "x64" / configuration),
+            _x64_artifacts(
+                repo_root,
+                configuration,
+                repo_root / "GargoyleX64" / "x64" / configuration,
+            ),
+            _x64_artifacts(repo_root, configuration, repo_root / "GargoyleX64" / configuration),
+        )
+    if platform_name == "arm64":
+        return _arm_artifact_candidates(
+            repo_root=repo_root,
+            configuration=configuration,
+            platform_name="arm64",
+            platform_dir="ARM64",
+            project_name="GargoyleArm64",
+            executable_name="GargoyleArm64.exe",
+            setup_name="setup_arm64.pic",
+            reentry_name="reentry_arm64.pic",
+        )
+    return _arm_artifact_candidates(
+        repo_root=repo_root,
+        configuration=configuration,
+        platform_name="arm64ec",
+        platform_dir="ARM64EC",
+        project_name="GargoyleArm64EC",
+        executable_name="GargoyleArm64EC.exe",
+        setup_name="setup_arm64ec.pic",
+        reentry_name="reentry_arm64ec.pic",
     )
 
 
@@ -262,6 +354,108 @@ def _x64_artifacts(
         executable=output_dir / "GargoyleX64.exe",
         setup_pic=output_dir / "setup_x64.pic",
         reentry_pic=output_dir / "reentry_x64.pic",
+    )
+
+
+def _arm_artifact_candidates(
+    *,
+    repo_root: Path,
+    configuration: Configuration,
+    platform_name: Platform,
+    platform_dir: str,
+    project_name: str,
+    executable_name: str,
+    setup_name: str,
+    reentry_name: str,
+) -> tuple[GargoyleArtifacts, ...]:
+    """Return expected ARM-family artifact layouts.
+
+    Args:
+        repo_root: Repository root.
+        configuration: Visual Studio configuration.
+        platform_name: Canonical harness platform.
+        platform_dir: Visual Studio platform output directory name.
+        project_name: Expected native project directory name.
+        executable_name: Expected executable file name.
+        setup_name: Expected setup PIC file name.
+        reentry_name: Expected re-entry PIC file name.
+
+    Returns:
+        Candidate ARM artifact layouts.
+    """
+    lowercase_platform_dir = platform_dir.lower()
+    return (
+        _generic_artifacts(
+            repo_root=repo_root,
+            configuration=configuration,
+            platform_name=platform_name,
+            output_dir=repo_root / platform_dir / configuration,
+            executable_name=executable_name,
+            setup_name=setup_name,
+            reentry_name=reentry_name,
+        ),
+        _generic_artifacts(
+            repo_root=repo_root,
+            configuration=configuration,
+            platform_name=platform_name,
+            output_dir=repo_root / lowercase_platform_dir / configuration,
+            executable_name=executable_name,
+            setup_name=setup_name,
+            reentry_name=reentry_name,
+        ),
+        _generic_artifacts(
+            repo_root=repo_root,
+            configuration=configuration,
+            platform_name=platform_name,
+            output_dir=repo_root / project_name / platform_dir / configuration,
+            executable_name=executable_name,
+            setup_name=setup_name,
+            reentry_name=reentry_name,
+        ),
+        _generic_artifacts(
+            repo_root=repo_root,
+            configuration=configuration,
+            platform_name=platform_name,
+            output_dir=repo_root / project_name / configuration,
+            executable_name=executable_name,
+            setup_name=setup_name,
+            reentry_name=reentry_name,
+        ),
+    )
+
+
+def _generic_artifacts(
+    *,
+    repo_root: Path,
+    configuration: Configuration,
+    platform_name: Platform,
+    output_dir: Path,
+    executable_name: str,
+    setup_name: str,
+    reentry_name: str,
+) -> GargoyleArtifacts:
+    """Create a generic timer/re-entry artifact layout.
+
+    Args:
+        repo_root: Repository root.
+        configuration: Visual Studio configuration.
+        platform_name: Canonical harness platform.
+        output_dir: Candidate output directory.
+        executable_name: Expected executable file name.
+        setup_name: Expected setup PIC file name.
+        reentry_name: Expected re-entry PIC file name.
+
+    Returns:
+        Generic artifact paths.
+    """
+    return GargoyleArtifacts(
+        repo_root=repo_root,
+        configuration=configuration,
+        platform=platform_name,
+        output_dir=output_dir,
+        executable=output_dir / executable_name,
+        setup_pic=output_dir / setup_name,
+        reentry_pic=output_dir / reentry_name,
     )
 
 
