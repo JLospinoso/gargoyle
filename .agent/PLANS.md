@@ -17,6 +17,99 @@ without reading the full chat.
 
 ## Active Plans
 
+### Plan: Issue #26 Layered Gargoyle Documentation Reference
+
+#### Objective
+
+Refactor `docs/` into a layered, decision-clear reference that explains safety,
+concepts, lab setup, architecture paths, implementation internals, validation
+semantics, research context, and maintainer guidance.
+
+Definition of done:
+
+- Issue #26 tracks the documentation reference refactor.
+- Branch `codex/docs-layered-reference` starts from `master`.
+- The flat docs pages are replaced by a foldered information architecture with
+  concepts, architectures, implementation, validation, research, and
+  contributing sections.
+- The Win32 proof of concept remains canonical; x64, ARM64, and ARM64EC are
+  documented as sibling demonstrations.
+- Mermaid diagrams cover lifecycle, `SleepEx`/APC semantics, architecture
+  comparison, harness flow, CI flow, memory-state timeline, and research
+  lineage.
+- `README.md` becomes a short entry point into docs.
+- PR #25 is closed as superseded after the comprehensive PR opens.
+- Local validation and PR CI pass.
+
+#### User Decisions And Assumptions
+
+User decisions:
+
+- 2026-05-13: User asked to implement the complete layered docs plan.
+- Delivery shape: one comprehensive PR.
+- URL compatibility: clean rename, no shim pages.
+- Diagram format: Mermaid.
+- PR #25 should be superseded, not expanded.
+
+Assumptions:
+
+- This is a documentation refactor only. No C++, NASM, Python harness, MSBuild,
+  or CI behavior changes are in scope except documentation references.
+- The existing private `.private-docs/` directory should remain ignored and
+  uncommitted.
+- External dual-use projects belong only in historical, defensive, or lineage
+  context.
+
+#### Scope
+
+In scope:
+
+- `docs/`, `README.md`, `mkdocs.yml`, `.gitignore`, and this plan file.
+- Issue, branch, PR, CI monitoring, and PR #25 supersession comment/closure.
+
+Out of scope:
+
+- Native runtime changes.
+- New detector, gadget-search, PE-wrapping, injection, or payload tooling.
+- Operational adaptation guidance or product-evasion playbooks.
+- Merging the PR.
+
+#### Validation
+
+Planned local checks:
+
+- `just docs` passed on 2026-05-13.
+- `just check` passed on 2026-05-13.
+
+Planned hosted checks:
+
+- PR run `25821257317` passed `Windows build and Python checks` and
+  `Windows 11 ARM smoke` on 2026-05-13.
+
+#### Artifact Index
+
+- Issue #26: `https://github.com/JLospinoso/gargoyle/issues/26`
+- Branch: `codex/docs-layered-reference`
+- Superseded PR #25: `https://github.com/JLospinoso/gargoyle/pull/25`
+- Comprehensive PR #27: `https://github.com/JLospinoso/gargoyle/pull/27`
+
+#### Progress Log
+
+- 2026-05-13: Issue #26 created.
+- 2026-05-13: Branch `codex/docs-layered-reference` created from `master`.
+- 2026-05-13: Drafted layered docs tree, removed old flat pages without shims,
+  updated README and MkDocs navigation, and added `.private-docs/` ignore.
+- 2026-05-13: Local validation passed with `just docs` and `just check`.
+- 2026-05-13: Commit `138e8f1` pushed and PR #27 opened against `master`.
+- 2026-05-13: Draft PR #25 closed as superseded by PR #27.
+- 2026-05-13: Amended branch to commit `911f247`; PR run `25821257317` passed
+  both required checks.
+
+#### Handoff Packet
+
+- Current status: PR #27 is open, mergeable, and CI-green.
+- Remaining: none for this plan unless review feedback arrives.
+
 ### Plan: Timer APC Re-Entry Semantics Fix
 
 #### Objective
