@@ -20,7 +20,7 @@ Start with the documentation:
 - [Responsible use](docs/responsible-use.md) for safety boundaries and non-goals.
 - [Quickstart](docs/quickstart.md) for the shortest safe build and validation path.
 - [Architecture comparison](docs/architectures/comparison.md) for what each
-  sibling demonstration proves and does not prove.
+  sibling demonstration validates and does not prove.
 - [Research context](docs/research/context.md) for the original article,
   defensive work, and later related research.
 

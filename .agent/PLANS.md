@@ -109,12 +109,21 @@ Planned hosted checks:
 - 2026-05-13: Fixed Mermaid rendering by registering the `mermaid` custom fence
   in `pymdownx.superfences`; local browser verification confirmed rendered
   diagrams on all Mermaid pages and `just check` passed.
+- 2026-05-13: Addressed adversarial Pro review feedback: tightened x86/x64
+  live MessageBox evidence claims, documented ARM64/ARM64EC callback counters,
+  added platform/mode and maintainer detail tables, documented ARM64EC PE image
+  family compatibility, aligned lineage references, and added the MkDocs
+  `tables` extension after browser verification showed tables were not rendered
+  by the old serve configuration.
+- 2026-05-13: Validation after review fixes passed with `just docs`,
+  browser-rendered checks for Mermaid and tables, and `just check`.
 
 #### Handoff Packet
 
-- Current status: PR #27 is open, mergeable, CI-green, and includes the Mermaid
-  rendering fix.
-- Remaining: none for this plan unless review feedback arrives.
+- Current status: PR #27 is open and local review fixes are validated; push and
+  hosted CI refresh remain before final merge-readiness.
+- Remaining: commit review fixes, push, update PR notes, and monitor GitHub
+  checks.
 
 ### Plan: Timer APC Re-Entry Semantics Fix
 

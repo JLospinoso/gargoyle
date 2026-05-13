@@ -1,8 +1,8 @@
 # ARM64EC Sibling
 
-`GargoyleArm64EC` is an ARM64EC sibling demonstration. It proves build identity,
-runtime identity, EC dynamic-code allocation, and benign timer/APC semantics in
-an ARM64EC process.
+`GargoyleArm64EC` is an ARM64EC sibling demonstration. It validates build
+identity, runtime identity, the EC-code allocation path used by this demo, and
+benign timer/APC semantics in an ARM64EC process.
 
 ## Files
 
@@ -19,6 +19,9 @@ The runtime reserves EC-code address space with `VirtualAlloc2` and
 `MEM_EXTENDED_PARAMETER_EC_CODE`, then commits writable storage inside that
 reservation before applying executable protection.
 
+This exercises the ARM64EC dynamic-code allocation path used here. It is not a
+general proof of every ARM64EC dynamic-code pattern.
+
 ## ABI Boundaries
 
 The v1 ARM64EC demonstration uses C++ wrappers for imported Windows APIs so the
@@ -27,8 +30,12 @@ mixed x64 DLL interop.
 
 ## Validation
 
-Hosted `windows-11-arm` CI validates ARM64EC-compatible image identity,
-architecture reports, and headless timer/APC rounds. Those checks prove the
+Hosted `windows-11-arm` CI validates ARM64EC-compatible image-family identity,
+architecture reports, and headless timer/APC rounds. PE-machine validation
+checks compatibility with the expected ARM64EC image family rather than
+requiring one simplistic machine value. The headless runtime records
+completed-round and callback-round counters, so CI checks callback delivery
+more directly than the x86/x64 live MessageBox path. Those checks validate the
 benign smoke path, not a general mixed-ABI design.
 
 See [Architecture Comparison](comparison.md),

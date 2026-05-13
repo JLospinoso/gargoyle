@@ -23,7 +23,7 @@ When reviewing assembly changes:
 - keep C++ and assembly configuration layouts paired;
 - confirm offsets with static assertions or documented constants;
 - avoid adding loader, deployment, persistence, or network behavior;
-- update validation docs when the proof semantics change.
+- update validation docs when the evidence semantics change.
 
 The x64, ARM64, and ARM64EC demonstrations are sibling demonstrations, not
 transparent ports of the Win32 stack-pivot chain.

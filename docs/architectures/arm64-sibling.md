@@ -25,10 +25,12 @@ semantics.
 
 ## Validation
 
-Hosted `windows-11-arm` CI builds Debug and Release, validates PE machine
-identity, runs architecture reports, and runs headless rounds without GUI
-automation. Local live validation is possible only when an ARM64 Windows desktop
-lab is available.
+Hosted `windows-11-arm` CI builds Debug and Release, validates PE-machine
+compatibility, runs architecture reports, and runs headless rounds without GUI
+automation. The headless runtime records completed-round and callback-round
+counters, so CI checks callback delivery more directly than the x86/x64 live
+MessageBox path. Local live validation is possible only when an ARM64 Windows
+desktop lab is available.
 
 See [Headless, Artifacts, And Architecture](../validation/headless-artifacts-architecture.md)
 and [Responsible Use](../responsible-use.md).

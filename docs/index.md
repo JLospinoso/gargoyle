@@ -23,7 +23,7 @@ general runtime framework.
 - A typed Python acceptance harness with live, artifact, architecture, and
   headless modes.
 - Sibling x64, ARM64, and ARM64EC examples with explicit architecture caveats.
-- Corrected timer/APC proof semantics based on alertable `SleepEx` waits.
+- Corrected timer/APC evidence semantics based on alertable `SleepEx` waits.
 - A layered documentation set that separates concept, implementation, validation,
   and research claims.
 

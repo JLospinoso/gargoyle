@@ -29,10 +29,14 @@ flowchart TD
 
 ## What It Proves
 
-The live harness proves initial PIC handoff and timer/APC-backed re-entry when
-it closes two benign `gargoyle` MessageBoxes. Manual memory-map observation can
-suggest the temporal protection cycle by showing the setup PIC executable while
-active and non-executable while dormant.
+The live harness validates initial PIC handoff and later re-entry into the
+benign demo path when it closes two benign `gargoyle` MessageBoxes. The second
+round is consistent with the intended timer/APC path after an alertable
+`SleepEx` wait, but the live check does not independently prove callback
+identity or observe every memory-protection transition.
+
+Manual memory-map observation can suggest the temporal protection cycle by
+showing the setup PIC executable while active and non-executable while dormant.
 
 ## Caveats
 

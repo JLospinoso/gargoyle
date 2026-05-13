@@ -20,9 +20,13 @@ sequenceDiagram
     Reentry-->>Thread: Return to benign demo loop
 ```
 
-The second benign MessageBox now depends on APC dispatch during an alertable
-sleep. That is stronger evidence than simply observing that a waitable timer
-object became signaled.
+The corrected demo path is designed around APC dispatch during an alertable
+sleep. The second live MessageBox validates controlled re-entry after that
+alertable wait and is consistent with the intended timer/APC path. The live
+x86/x64 check still does not independently prove callback identity or record
+every protection transition. ARM64 and ARM64EC headless runs add explicit
+completed-round and callback-round counters for stronger non-interactive
+callback evidence.
 
 ## Weak Mental Model
 
@@ -44,5 +48,5 @@ the research value.
 - x64 uses a separate re-entry PIC that enters `SleepEx`.
 - ARM64 and ARM64EC use re-entry assembly that also calls `SleepEx`.
 
-See [Validation Overview](../validation/overview.md) for what this proves and
+See [Validation Overview](../validation/overview.md) for what this validates and
 [Responsible Use](../responsible-use.md) for scope limits.

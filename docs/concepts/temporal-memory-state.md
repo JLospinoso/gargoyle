@@ -23,11 +23,12 @@ The point is not invisibility. The region still exists in the process. Timers,
 APCs, private allocations, stacks, memory-protection transitions, and console
 output remain visible to defenders and lab tooling.
 
-## What It Proves
+## What It Demonstrates
 
-Gargoyle proves that a benign program can place its own code in a
-non-executable dormant state and later re-enter it through timer/APC mechanics.
-It does not prove that real endpoint products can be bypassed.
+Gargoyle demonstrates that a benign program can place its own code in a
+non-executable dormant state and later re-enter it through controlled
+timer/APC-oriented mechanics. It does not prove that real endpoint products can
+be bypassed.
 
 ## What To Read Next
 

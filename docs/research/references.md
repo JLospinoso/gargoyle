@@ -37,15 +37,25 @@ Access dates are recorded per entry.
   historical and defensive context. Accessed 2026-05-08.
 - [waldo-irc/YouMayPasser](https://github.com/waldo-irc/YouMayPasser) describes
   itself as an x64 Gargoyle implementation. Accessed 2026-05-08.
+- [thefLink/DeepSleep](https://github.com/thefLink/DeepSleep) describes itself
+  as a Gargoyle-like x64 ROP/PIC variant and explicitly credits the original
+  Gargoyle technique. Accessed 2026-05-13.
 - [mgeeky/ShellcodeFluctuation](https://github.com/mgeeky/ShellcodeFluctuation)
   cites Gargoyle as background for cyclic memory-protection changes. Accessed
   2026-05-08.
+- [Cracked5pider/Ekko](https://github.com/Cracked5pider/Ekko) is an archived
+  timer-queue sleep-obfuscation proof of concept. It is adjacent context, not a
+  declared Gargoyle descendant. Accessed 2026-05-13.
 - [Idov31/Cronos](https://github.com/Idov31/Cronos) is a waitable-timer based
   sleep-obfuscation proof of concept adjacent to the broader family. Accessed
   2026-05-08.
+- [MDSec: How I Met Your Beacon](https://www.mdsec.co.uk/2022/07/part-1-how-i-met-your-beacon-overview/)
+  discusses FOLIAGE, Ekko, ShellcodeFluctuation, and Gargoyle in a broader
+  page-protection and event-driven sleep-obfuscation family. Accessed
+  2026-05-13.
 - [Understanding Sleep Obfuscation](https://binarydefense.com/resources/blog/understanding-sleep-obfuscation/)
-  gives a defender-oriented comparison of related approaches. Accessed
-  2026-05-08.
+  gives a defender-oriented comparison of related approaches, including FOLIAGE,
+  Ekko, and Cronos detection observations. Accessed 2026-05-08.
 - [Hunting for timer-queue timers](https://labs.withsecure.com/publications/hunting-for-timer-queue-timers)
   covers timer-queue detection work. Accessed 2026-05-08.
 

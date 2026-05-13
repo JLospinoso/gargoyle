@@ -47,9 +47,12 @@ MessageBoxes:
 uv run --all-groups gargoyle-acceptance --configuration Debug
 ```
 
-The first MessageBox proves initial PIC handoff. The second proves timer/APC
-re-entry through the corrected alertable wait path. It does not prove product
-evasion, invisibility, or broad defensive failure.
+The first MessageBox validates initial PIC handoff. The second validates later
+re-entry into the benign demo path after an alertable wait. That is consistent
+with the intended timer/APC path, but the x86/x64 live MessageBox check does
+not independently prove callback identity or observe every memory-protection
+transition. It also does not prove product evasion, invisibility, or broad
+defensive failure.
 
 ## Non-Interactive Checks
 
@@ -62,7 +65,9 @@ uv run --all-groups gargoyle-acceptance --configuration Debug --platform arm64 -
 ```
 
 See [Headless, Artifacts, And Architecture](validation/headless-artifacts-architecture.md)
-for what each non-interactive mode proves.
+for what each non-interactive mode validates. ARM64 and ARM64EC headless runs add
+completed-round and callback-round counters, which makes their non-interactive
+evidence stronger for callback delivery than the x86/x64 MessageBox check.
 
 ## Next Steps
 

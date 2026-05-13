@@ -1,5 +1,5 @@
 site_name: Gargoyle
-site_description: Gargoyle memory-scanner evasion proof-of-concept documentation.
+site_description: Historical Windows temporal memory-state research proof-of-concept documentation.
 repo_url: https://github.com/JLospinoso/gargoyle
 strict: true
 
@@ -23,6 +23,7 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - tables
   - toc:
       permalink: true
   - pymdownx.superfences:

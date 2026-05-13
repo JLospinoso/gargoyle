@@ -26,7 +26,7 @@ offensive framework.
   the original Win32 stack-pivot chain.
 - Live validation needs a Windows desktop session because it closes visible
   MessageBox windows.
-- CI-safe modes prove build, identity, architecture-report, or headless smoke
+- CI-safe modes validate build, identity, architecture-report, or headless smoke
   evidence; they do not replace live desktop observation.
 - Gargoyle does not make memory disappear. Process memory maps, timer state,
   private allocations, stack shape, and behavioral telemetry can still expose
