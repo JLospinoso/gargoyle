@@ -87,6 +87,8 @@ Planned hosted checks:
 
 - PR run `25821257317` passed `Windows build and Python checks` and
   `Windows 11 ARM smoke` on 2026-05-13.
+- PR run `25823512391` passed `Windows build and Python checks` and
+  `Windows 11 ARM smoke` on 2026-05-13 after the adversarial-review response.
 
 #### Artifact Index
 
@@ -117,13 +119,14 @@ Planned hosted checks:
   by the old serve configuration.
 - 2026-05-13: Validation after review fixes passed with `just docs`,
   browser-rendered checks for Mermaid and tables, and `just check`.
+- 2026-05-13: Pushed review-response commit `f83cec0`; PR run
+  `25823512391` passed both required checks.
 
 #### Handoff Packet
 
-- Current status: PR #27 is open and local review fixes are validated; push and
-  hosted CI refresh remain before final merge-readiness.
-- Remaining: commit review fixes, push, update PR notes, and monitor GitHub
-  checks.
+- Current status: PR #27 is open, mergeable, CI-green, and includes the
+  adversarial-review response.
+- Remaining: none for this plan unless new review feedback arrives.
 
 ### Plan: Timer APC Re-Entry Semantics Fix
 
