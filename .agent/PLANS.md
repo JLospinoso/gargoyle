@@ -80,6 +80,8 @@ Planned local checks:
 
 - `just docs` passed on 2026-05-13.
 - `just check` passed on 2026-05-13.
+- Browser verification passed on 2026-05-13 after restarting `mkdocs serve`:
+  Mermaid pages render as `.mermaid` diagram blocks instead of code blocks.
 
 Planned hosted checks:
 
@@ -104,11 +106,15 @@ Planned hosted checks:
 - 2026-05-13: Draft PR #25 closed as superseded by PR #27.
 - 2026-05-13: Amended branch to commit `911f247`; PR run `25821257317` passed
   both required checks.
+- 2026-05-13: Fixed Mermaid rendering by registering the `mermaid` custom fence
+  in `pymdownx.superfences`; local browser verification confirmed rendered
+  diagrams on all Mermaid pages and `just check` passed.
 
 #### Handoff Packet
 
-- Current status: PR #27 is open, mergeable, and CI-green.
-- Remaining: none for this plan unless review feedback arrives.
+- Current status: PR #27 is open with the Mermaid rendering fix staged for push.
+- Remaining: commit and push the Mermaid fix, monitor CI, and record final
+  evidence.
 
 ### Plan: Timer APC Re-Entry Semantics Fix
 
