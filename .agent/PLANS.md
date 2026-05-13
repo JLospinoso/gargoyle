@@ -112,9 +112,9 @@ Planned hosted checks:
 
 #### Handoff Packet
 
-- Current status: PR #27 is open with the Mermaid rendering fix staged for push.
-- Remaining: commit and push the Mermaid fix, monitor CI, and record final
-  evidence.
+- Current status: PR #27 is open, mergeable, CI-green, and includes the Mermaid
+  rendering fix.
+- Remaining: none for this plan unless review feedback arrives.
 
 ### Plan: Timer APC Re-Entry Semantics Fix
 
