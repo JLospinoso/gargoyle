@@ -7,7 +7,7 @@ new to the repository.
 ## Prerequisites
 
 - Windows desktop session for live MessageBox validation.
-- Visual Studio C++ toolchain with MSBuild and Windows SDK `10.0`.
+- Visual Studio C++ toolchain with MSBuild and a Windows 10/11 SDK.
 - NASM on `PATH` for Win32 and x64 PIC builds.
 - Python 3.13, `uv`, and `just`.
 - ARM64 and ARM64EC toolchains only when building the Windows-on-Arm siblings.

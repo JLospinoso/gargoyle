@@ -29,7 +29,7 @@ flowchart LR
 
 ## Shared Claims
 
-All architectures keep the demo benign and visible. All use timer/APC re-entry
+All architectures keep the demo benign and observable. All use timer/APC re-entry
 and an alertable `SleepEx` wait for the corrected evidence semantics. The
 x86/x64 live MessageBox path validates controlled re-entry behavior; the ARM
 headless path additionally records callback counters.

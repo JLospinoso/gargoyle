@@ -1,40 +1,53 @@
 # Lineage
 
-Lineage claims need care. Direct descent requires a source to describe the work
-as Gargoyle-derived or Gargoyle-like. Shared problem space alone is not enough.
+Lineage claims should be conservative. Direct lineage requires source
+self-description, not similarity in timers, callbacks, sleep behavior, or
+memory-protection changes.
 
 ```mermaid
 flowchart TD
-    G[Gargoyle 2017]
-    G --> D[Declared descendants or variants]
-    D --> Y[YouMayPasser]
-    D --> DS[DeepSleep]
-    G -. adjacent idea .-> S[Sleep-obfuscation family]
-    S --> SF[ShellcodeFluctuation]
-    S --> E[Ekko]
-    S --> C[Cronos]
-    S --> F[FOLIAGE]
-    G --> DEF[Defensive analysis]
-    DEF --> FS[F-Secure / WithSecure]
-    DEF --> VOL[Volatility plugin work]
-    DEF --> TQ[Timer-queue hunting]
-    G -. comparison .-> AF[Memory-hiding and anti-forensics]
-    AF --> PTE[PTE / memory-subversion research]
+    G["Gargoyle 2017"]
+    D["Declared Gargoyle relationships"]
+    A["Explicitly inspired but mechanically adjacent"]
+    F["Broader sleep-obfuscation family"]
+    R["Defensive and forensics response"]
+    H["Stronger memory-hiding and anti-forensics"]
+
+    G --> D
+    D --> DG["dotnet-gargoyle"]
+    D --> Y["YouMayPasser"]
+    D --> DS["DeepSleep"]
+
+    G -. inspired context .-> A
+    A --> SF["ShellcodeFluctuation"]
+
+    G -. family context .-> F
+    F --> EC["Ekko / Cronos / FOLIAGE-related analysis"]
+    F --> TQ["Timer-queue hunting context"]
+
+    G -. analyzed by .-> R
+    R --> V["Volatility and memory-hunting work"]
+
+    G -. compared with .-> H
+    H --> PTE["PTE-aware and memory-subversion research"]
 ```
 
 ## Categories
 
-- Direct or declared descendants: projects that explicitly cite Gargoyle as a
-  basis or variant. The map uses this category for YouMayPasser and DeepSleep.
-- Adjacent sleep-obfuscation work: projects that share timer, sleep, memory
-  permission, or dormant-state ideas without necessarily descending from
-  Gargoyle. The map uses this category for ShellcodeFluctuation, Ekko, Cronos,
-  and FOLIAGE.
-- Defensive work: memory hunting, forensics, and timer/APC inspection.
-- Stronger memory-hiding research: work that changes enumeration or memory-map
-  visibility rather than only current page protections.
+- Declared Gargoyle relationships: sources that describe themselves as
+  Gargoyle-related. This category includes `dotnet-gargoyle`, YouMayPasser, and
+  DeepSleep. The claim is relationship, not mechanical identity.
+- Explicitly inspired but mechanically adjacent work: ShellcodeFluctuation cites
+  Gargoyle as background for cyclic memory-protection changes, but it should not
+  be treated as a direct continuation of the original waitable-timer/APC proof.
+- Broader sleep-obfuscation family: Ekko, Cronos, FOLIAGE-related analysis,
+  timer-queue hunting, and similar work belong here unless a primary source makes
+  a narrower Gargoyle lineage claim.
+- Defensive and forensics response: Volatility plugin work, memory hunting, and
+  timer inspection analyze or respond to the technique. They are not lineage
+  claims.
+- Stronger memory-hiding and anti-forensics: PTE-aware analysis and
+  memory-subversion research are separate from Gargoyle-style protection cycling.
+  They may be useful comparison points, but they are not "Gargoyle but stronger."
 
-Every named node in this map has a corresponding entry in
-[References](references.md). Solid edges indicate declared lineage or analysis
-directly centered on Gargoyle. Dotted edges indicate adjacent work or comparison
-only.
+See [References](references.md) for the annotated source map.

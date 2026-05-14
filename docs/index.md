@@ -35,7 +35,7 @@ operator guidance. The useful claim is narrower: memory-state observations
 are temporal, and point-in-time executable-page scans can miss code that is
 non-executable while dormant.
 
-## Fast Commands
+## Fast Preflight
 
 ```powershell
 uv sync --all-groups
@@ -43,5 +43,6 @@ just check
 uv run --all-groups gargoyle-acceptance --configuration Debug
 ```
 
+Use `just ci` as the canonical repository gate before publication or merge.
 Runtime validation is Windows-only. The live path opens benign MessageBox
 windows and should only run in an owned Windows desktop lab.

@@ -7,7 +7,7 @@ meaning.
 | --- | --- | --- | --- |
 | Artifact mode | Expected files exist and PE machine value is compatible with the requested platform | Build graph is healthy | Runtime re-entry works |
 | Architecture report | The launched binary reports expected platform facts | Correct executable was selected | Timer/APC lifecycle works |
-| ARM64/ARM64EC headless mode | Configured setup/re-entry rounds complete and callback counters meet expectations | CI-safe callback delivery evidence is healthy | Desktop MessageBox behavior |
+| ARM64/ARM64EC headless mode | Configured setup/re-entry rounds complete and callback counters meet expectations | CI-safe callback delivery evidence is healthy | Desktop MessageBox behavior, every protection transition, product evasion, or invisibility |
 | Two live x86/x64 MessageBoxes | Initial execution and later re-entry into the benign demo path occurred | The intended timer/APC path after alertable `SleepEx` is behaving consistently | Callback identity, every protection transition, product evasion, or invisibility |
 | VMMap/manual observation | Observed region protection changed during the sampled windows | Temporal state model is visible | Every transient state was captured |
 
