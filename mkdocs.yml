@@ -1,5 +1,5 @@
 site_name: Gargoyle
-site_description: Gargoyle memory-scanner evasion proof-of-concept documentation.
+site_description: Historical Windows temporal memory-state research proof-of-concept documentation.
 repo_url: https://github.com/JLospinoso/gargoyle
 strict: true
 
@@ -23,9 +23,14 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - tables
   - toc:
       permalink: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
@@ -33,11 +38,36 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Acceptance Harness: acceptance.md
-  - Validation Checklist: validation-checklist.md
-  - Win32 Architecture: win32-architecture.md
-  - x64 Architecture: x64-architecture.md
   - Responsible Use: responsible-use.md
-  - Future Work: future-work.md
-  - References: references.md
+  - Quickstart: quickstart.md
+  - Lab Setup: lab-setup.md
+  - Concepts:
+      - Temporal Memory State: concepts/temporal-memory-state.md
+      - Windows Primitives: concepts/windows-primitives.md
+      - Timer APC And SleepEx: concepts/timer-apc-sleepex.md
+      - ROP, Stack Pivoting, And PIC: concepts/rop-stack-pivoting-pic.md
+  - Architectures:
+      - Win32 Original: architectures/win32-original.md
+      - x64 Sibling: architectures/x64-sibling.md
+      - ARM64 Sibling: architectures/arm64-sibling.md
+      - ARM64EC Sibling: architectures/arm64ec-sibling.md
+      - Comparison: architectures/comparison.md
+  - Implementation:
+      - C++ Harnesses: implementation/cpp-harnesses.md
+      - Assembly And PIC: implementation/assembly-pic.md
+      - Build System: implementation/build-system.md
+      - Acceptance Harness: implementation/acceptance-harness.md
+      - Tests And CI: implementation/tests-and-ci.md
+  - Validation:
+      - Overview: validation/overview.md
+      - Live MessageBox: validation/live-messagebox.md
+      - Headless, Artifacts, And Architecture: validation/headless-artifacts-architecture.md
+      - Limitations: validation/limitations.md
+  - Research:
+      - Context: research/context.md
+      - Lineage: research/lineage.md
+      - References: research/references.md
+  - Contributing:
+      - Maintainer Guide: contributing/maintainer-guide.md
+      - Docs Style: contributing/docs-style.md
   - Python API: api.md
